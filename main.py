@@ -17,6 +17,10 @@ import datetime
 from tensorboardX import SummaryWriter
 from util import flow2rgb, AverageMeter, save_checkpoint
 
+import warnings
+warnings.filterwarnings("ignore")
+
+
 model_names = sorted(name for name in models.__dict__
                      if name.islower() and not name.startswith("__"))
 dataset_names = sorted(name for name in datasets.__all__)
@@ -229,10 +233,24 @@ def train(train_loader, model, optimizer, epoch, train_writer):
         # measure data loading time
         data_time.update(time.time() - end)
         target = target.to(device)
-        input = torch.cat(input,1).to(device)
+        # print ('input:')
+        # print (type(input))
+        # print (type(input[0]))
+        # print (len(input))
+        # print (input[0].size())
+        # print (input[1].size())
+        # print (input[0].type())
+
+        # print ('target:')
+        # print (type(target))
+        # print (target.size())
+
+        # concatnate the tensor
+        # input = torch.cat(input,1).to(device)
 
         # compute output
         output = model(input)
+
         if args.sparse:
             # Since Target pooling is not very precise when sparse,
             # take the highest resolution prediction and upsample it instead of downsampling target
@@ -278,7 +296,9 @@ def validate(val_loader, model, epoch, output_writers):
     end = time.time()
     for i, (input, target) in enumerate(val_loader):
         target = target.to(device)
-        input = torch.cat(input,1).to(device)
+
+        # concatnate the tensor
+        # input = torch.cat(input,1).to(device)
 
         # compute output
         output = model(input)

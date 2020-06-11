@@ -46,10 +46,23 @@ def multiscaleEPE(network_output, target_flow, weights=None, sparse=False):
         network_output = [network_output]
     if weights is None:
         weights = [0.005, 0.01, 0.02, 0.08, 0.32]  # as in original article
+    # print ('weights type:')
+    # print (type(weights))
+    # print (len(weights))
+    # print (type(weights[0]))
+    # print (weights[0])
+    # print ('network_output type:')
+    # print (type(network_output))
+    # print (len(network_output))
+    # print (type(network_output[0]))
+    # print (network_output[0])
     assert(len(weights) == len(network_output))
 
     loss = 0
     for output, weight in zip(network_output, weights):
+        # print ('output:')
+        # print (type(output))
+        # print (output.size())
         loss += weight * one_scale(output, target_flow, sparse)
     return loss
 

@@ -3,6 +3,8 @@ import torch.nn as nn
 from torch.nn.init import kaiming_normal_, constant_
 from .util import conv, predict_flow, deconv, crop_like, correlate
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 __all__ = [
     'flownetc', 'flownetc_bn'
 ]
@@ -53,7 +55,10 @@ class FlowNetC(nn.Module):
                 constant_(m.weight, 1)
                 constant_(m.bias, 0)
 
-    def forward(self, x):
+    def forward(self, input_ten):
+
+        x = torch.cat(input_ten,1).to(device)
+
         x1 = x[:,:3]
         x2 = x[:,3:]
 
