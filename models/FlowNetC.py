@@ -58,6 +58,8 @@ class FlowNetC(nn.Module):
     def forward(self, input_ten):
 
         # x = torch.cat(input_ten,1).to(device)
+        print ('input_ten:')
+        print (type(input_ten))
 
         x1 = input_ten[:,:3]
         x2 = input_ten[:,3:]
