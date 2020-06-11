@@ -246,7 +246,7 @@ def train(train_loader, model, optimizer, epoch, train_writer):
         # print (target.size())
 
         # concatnate the tensor
-        # input = torch.cat(input,1).to(device)
+        input = torch.cat(input,1).to(device)
 
         # compute output
         output = model(input)
@@ -297,12 +297,9 @@ def validate(val_loader, model, epoch, output_writers):
     for i, (input, target) in enumerate(val_loader):
         target = target.to(device)
 
-        print ('main input datatype:')
-        print (type(input))
         # concatnate the tensor
         input = torch.cat(input,1).to(device)
-        print ('main input datatype after:')
-        print (type(input))
+        
         # compute output
         output = model(input)
         flow2_EPE = args.div_flow*realEPE(output, target, sparse=args.sparse)
