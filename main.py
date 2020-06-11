@@ -312,10 +312,10 @@ def validate(val_loader, model, epoch, output_writers):
 
         if i < len(output_writers):  # log first output of first batches
             if epoch == 0:
-                mean_values = torch.tensor([0.45,0.432,0.411], dtype=input.dtype).view(3,1,1)
+                mean_values = torch.tensor([0.45,0.432,0.411], dtype=input[0].dtype).view(3,1,1)
                 output_writers[i].add_image('GroundTruth', flow2rgb(args.div_flow * target[0], max_value=10), 0)
-                output_writers[i].add_image('Inputs', (input[0,:3].cpu() + mean_values).clamp(0,1), 0)
-                output_writers[i].add_image('Inputs', (input[0,3:].cpu() + mean_values).clamp(0,1), 1)
+                output_writers[i].add_image('Inputs', (input[0].cpu() + mean_values).clamp(0,1), 0)
+                output_writers[i].add_image('Inputs', (input[1].cpu() + mean_values).clamp(0,1), 1)
             output_writers[i].add_image('FlowNet Outputs', flow2rgb(args.div_flow * output[0], max_value=10), epoch)
 
         if i % args.print_freq == 0:
