@@ -75,6 +75,12 @@ def main():
             if img_pair.isfile():
                 img_pairs.append([file, img_pair])
 
+    print (file)
+    print (img_pair)
+    print ('img_pairs')
+    print (img_pairs)
+
+
     print('{} samples found'.format(len(img_pairs)))
     # create model
     network_data = torch.load(args.pretrained)

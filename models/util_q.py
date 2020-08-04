@@ -153,25 +153,25 @@ def conv(batchNorm, in_planes, out_planes, kernel_size=3, stride=1):
             nn.ReLU()
         )
 
-def conv_Q(batchNorm, in_planes, out_planes, kernel_size=3, stride=1):
+def conv_Q(batchNorm, in_planes, out_planes, kernel_size=3, stride=1, bitW=32, bitA=32):
     if batchNorm:
         return nn.Sequential(
-            Conv2d_Q(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=(kernel_size-1)//2, bias=False),
+            Conv2d_Q(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=(kernel_size-1)//2, bias=False, bitW=bitW),
             nn.BatchNorm2d(out_planes),
-            Act_Q()
+            Act_Q(bitA=bitA)
         )
     else:
         return nn.Sequential(
-            Conv2d_Q(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=(kernel_size-1)//2, bias=True),
-            Act_Q()
+            Conv2d_Q(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=(kernel_size-1)//2, bias=True, bitW=bitW),
+            Act_Q(bitA=bitA)
         )
 
 
 def predict_flow(in_planes):
     return nn.Conv2d(in_planes,2,kernel_size=3,stride=1,padding=1,bias=False)
 
-def predict_flow_Q(in_planes):
-    return Conv2d_Q(in_planes,2,kernel_size=3,stride=1,padding=1,bias=False)
+def predict_flow_Q(in_planes, bitW=32):
+    return Conv2d_Q(in_planes,2,kernel_size=3,stride=1,padding=1,bias=False, bitW=bitW)
 
 def deconv(in_planes, out_planes):
     return nn.Sequential(
@@ -179,10 +179,10 @@ def deconv(in_planes, out_planes):
         nn.ReLU()
     )
 
-def deconv_Q(in_planes, out_planes):
+def deconv_Q(in_planes, out_planes, bitW=32, bitA=32):
     return nn.Sequential(
-        ConvTrans2d_Q(in_planes, out_planes, kernel_size=4, stride=2, padding=1, bias=False),
-        Act_Q()
+        ConvTrans2d_Q(in_planes, out_planes, kernel_size=4, stride=2, padding=1, bias=False, bitW=bitW),
+        Act_Q(bitA=bitA)
     )
 
 
