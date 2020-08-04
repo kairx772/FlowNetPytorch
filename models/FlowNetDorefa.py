@@ -6,7 +6,7 @@ from .util_q import conv, predict_flow, deconv, crop_like, conv_Q, predict_flow_
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 __all__ = [
-    'flownetderefa'
+    'flownetdorefa'
 ]
 
 bitW = 8
