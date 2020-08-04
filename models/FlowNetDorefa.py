@@ -9,6 +9,9 @@ __all__ = [
     'flownetderefa'
 ]
 
+bitW = 8
+bitA = 8
+
 
 class FlowNetS(nn.Module):
     expansion = 1
@@ -17,31 +20,34 @@ class FlowNetS(nn.Module):
         super(FlowNetS,self).__init__()
 
         self.batchNorm = batchNorm
+        print (batchNorm)
+        print ('bitW', bitW)
+        print ('bitA', bitA)
         self.conv1   = conv(self.batchNorm,   6,   64, kernel_size=7, stride=2)
-        self.conv2   = conv_Q(self.batchNorm,  64,  128, kernel_size=5, stride=2)
-        self.conv3   = conv_Q(self.batchNorm, 128,  256, kernel_size=5, stride=2)
-        self.conv3_1 = conv_Q(self.batchNorm, 256,  256)
-        self.conv4   = conv_Q(self.batchNorm, 256,  512, stride=2)
-        self.conv4_1 = conv_Q(self.batchNorm, 512,  512)
-        self.conv5   = conv_Q(self.batchNorm, 512,  512, stride=2)
-        self.conv5_1 = conv_Q(self.batchNorm, 512,  512)
-        self.conv6   = conv_Q(self.batchNorm, 512, 1024, stride=2)
-        self.conv6_1 = conv_Q(self.batchNorm,1024, 1024)
+        self.conv2   = conv_Q(self.batchNorm,  64,  128, kernel_size=5, stride=2, bitW=bitW, bitA=bitA)
+        self.conv3   = conv_Q(self.batchNorm, 128,  256, kernel_size=5, stride=2, bitW=bitW, bitA=bitA)
+        self.conv3_1 = conv_Q(self.batchNorm, 256,  256, bitW=bitW, bitA=bitA)
+        self.conv4   = conv_Q(self.batchNorm, 256,  512, stride=2, bitW=bitW, bitA=bitA)
+        self.conv4_1 = conv_Q(self.batchNorm, 512,  512, bitW=bitW, bitA=bitA)
+        self.conv5   = conv_Q(self.batchNorm, 512,  512, stride=2, bitW=bitW, bitA=bitA)
+        self.conv5_1 = conv_Q(self.batchNorm, 512,  512, bitW=bitW, bitA=bitA)
+        self.conv6   = conv_Q(self.batchNorm, 512, 1024, stride=2, bitW=bitW, bitA=bitA)
+        self.conv6_1 = conv_Q(self.batchNorm,1024, 1024, bitW=bitW, bitA=bitA)
 
-        self.deconv5 = deconv_Q(1024,512)
-        self.deconv4 = deconv_Q(1026,256)
-        self.deconv3 = deconv_Q(770,128)
-        self.deconv2 = deconv_Q(386,64)
+        self.deconv5 = deconv_Q(1024,512, bitW=bitW, bitA=bitA)
+        self.deconv4 = deconv_Q(1026,256, bitW=bitW, bitA=bitA)
+        self.deconv3 = deconv_Q(770,128, bitW=bitW, bitA=bitA)
+        self.deconv2 = deconv_Q(386,64, bitW=bitW, bitA=bitA)
 
-        self.predict_flow6 = predict_flow_Q(1024)
-        self.predict_flow5 = predict_flow_Q(1026)
-        self.predict_flow4 = predict_flow_Q(770)
-        self.predict_flow3 = predict_flow_Q(386)
+        self.predict_flow6 = predict_flow_Q(1024, bitW=bitW)
+        self.predict_flow5 = predict_flow_Q(1026, bitW=bitW)
+        self.predict_flow4 = predict_flow_Q(770, bitW=bitW)
+        self.predict_flow3 = predict_flow_Q(386, bitW=bitW)
         self.predict_flow2 = predict_flow(194)
 
-        self.upsampled_flow6_to_5 = ConvTrans2d_Q(2, 2, 4, 2, 1, bias=False)
-        self.upsampled_flow5_to_4 = ConvTrans2d_Q(2, 2, 4, 2, 1, bias=False)
-        self.upsampled_flow4_to_3 = ConvTrans2d_Q(2, 2, 4, 2, 1, bias=False)
+        self.upsampled_flow6_to_5 = ConvTrans2d_Q(2, 2, 4, 2, 1, bias=False, bitW=bitW)
+        self.upsampled_flow5_to_4 = ConvTrans2d_Q(2, 2, 4, 2, 1, bias=False, bitW=bitW)
+        self.upsampled_flow4_to_3 = ConvTrans2d_Q(2, 2, 4, 2, 1, bias=False, bitW=bitW)
         self.upsampled_flow3_to_2 = nn.ConvTranspose2d(2, 2, 4, 2, 1, bias=False)
 
         for m in self.modules():

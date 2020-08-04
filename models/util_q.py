@@ -121,7 +121,7 @@ class Act_Q(nn.Module):
             qa = torch.nn.functional.relu(x)
         else:
             # min(max(x, 0), 1)
-            qa = self.quantize(torch.clamp(min=0), self.bitA)
+            qa = self.quantize(torch.clamp(x, min=0), self.bitA)
         return qa
 
 class Linear_Q(nn.Linear):
