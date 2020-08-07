@@ -1,53 +1,47 @@
 import torch
 import torch.nn as nn
 from torch.nn.init import kaiming_normal_, constant_
-from .util_q import conv, predict_flow, deconv, crop_like, conv_Q, predict_flow_Q, deconv_Q, ConvTrans2d_Q
+from .util_relu import conv, predict_flow, deconv, crop_like
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 __all__ = [
-    'flownetdorefa'
+    'flownetrelu'
 ]
 
-bitW = 8
-bitA = 8
 
-
-class FlowNetDorefa(nn.Module):
+class FlowNetReLu(nn.Module):
     expansion = 1
 
     def __init__(self,batchNorm=True):
-        super(FlowNetDorefa,self).__init__()
+        super(FlowNetReLu,self).__init__()
 
         self.batchNorm = batchNorm
-        print (batchNorm)
-        print ('bitW', bitW)
-        print ('bitA', bitA)
         self.conv1   = conv(self.batchNorm,   6,   64, kernel_size=7, stride=2)
-        self.conv2   = conv_Q(self.batchNorm,  64,  128, kernel_size=5, stride=2, bitW=bitW, bitA=bitA)
-        self.conv3   = conv_Q(self.batchNorm, 128,  256, kernel_size=5, stride=2, bitW=bitW, bitA=bitA)
-        self.conv3_1 = conv_Q(self.batchNorm, 256,  256, bitW=bitW, bitA=bitA)
-        self.conv4   = conv_Q(self.batchNorm, 256,  512, stride=2, bitW=bitW, bitA=bitA)
-        self.conv4_1 = conv_Q(self.batchNorm, 512,  512, bitW=bitW, bitA=bitA)
-        self.conv5   = conv_Q(self.batchNorm, 512,  512, stride=2, bitW=bitW, bitA=bitA)
-        self.conv5_1 = conv_Q(self.batchNorm, 512,  512, bitW=bitW, bitA=bitA)
-        self.conv6   = conv_Q(self.batchNorm, 512, 1024, stride=2, bitW=bitW, bitA=bitA)
-        self.conv6_1 = conv_Q(self.batchNorm,1024, 1024, bitW=bitW, bitA=bitA)
+        self.conv2   = conv(self.batchNorm,  64,  128, kernel_size=5, stride=2)
+        self.conv3   = conv(self.batchNorm, 128,  256, kernel_size=5, stride=2)
+        self.conv3_1 = conv(self.batchNorm, 256,  256)
+        self.conv4   = conv(self.batchNorm, 256,  512, stride=2)
+        self.conv4_1 = conv(self.batchNorm, 512,  512)
+        self.conv5   = conv(self.batchNorm, 512,  512, stride=2)
+        self.conv5_1 = conv(self.batchNorm, 512,  512)
+        self.conv6   = conv(self.batchNorm, 512, 1024, stride=2)
+        self.conv6_1 = conv(self.batchNorm,1024, 1024)
 
-        self.deconv5 = deconv_Q(1024,512, bitW=bitW, bitA=bitA)
-        self.deconv4 = deconv_Q(1026,256, bitW=bitW, bitA=bitA)
-        self.deconv3 = deconv_Q(770,128, bitW=bitW, bitA=bitA)
-        self.deconv2 = deconv_Q(386,64, bitW=bitW, bitA=bitA)
+        self.deconv5 = deconv(1024,512)
+        self.deconv4 = deconv(1026,256)
+        self.deconv3 = deconv(770,128)
+        self.deconv2 = deconv(386,64)
 
-        self.predict_flow6 = predict_flow_Q(1024, bitW=bitW)
-        self.predict_flow5 = predict_flow_Q(1026, bitW=bitW)
-        self.predict_flow4 = predict_flow_Q(770, bitW=bitW)
-        self.predict_flow3 = predict_flow_Q(386, bitW=bitW)
+        self.predict_flow6 = predict_flow(1024)
+        self.predict_flow5 = predict_flow(1026)
+        self.predict_flow4 = predict_flow(770)
+        self.predict_flow3 = predict_flow(386)
         self.predict_flow2 = predict_flow(194)
 
-        self.upsampled_flow6_to_5 = ConvTrans2d_Q(2, 2, 4, 2, 1, bias=False, bitW=bitW)
-        self.upsampled_flow5_to_4 = ConvTrans2d_Q(2, 2, 4, 2, 1, bias=False, bitW=bitW)
-        self.upsampled_flow4_to_3 = ConvTrans2d_Q(2, 2, 4, 2, 1, bias=False, bitW=bitW)
+        self.upsampled_flow6_to_5 = nn.ConvTranspose2d(2, 2, 4, 2, 1, bias=False)
+        self.upsampled_flow5_to_4 = nn.ConvTranspose2d(2, 2, 4, 2, 1, bias=False)
+        self.upsampled_flow4_to_3 = nn.ConvTranspose2d(2, 2, 4, 2, 1, bias=False)
         self.upsampled_flow3_to_2 = nn.ConvTranspose2d(2, 2, 4, 2, 1, bias=False)
 
         for m in self.modules():
@@ -103,14 +97,14 @@ class FlowNetDorefa(nn.Module):
         return [param for name, param in self.named_parameters() if 'bias' in name]
 
 
-def flownetdorefa(data=None):
+def flownetrelu(data=None):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 
     Args:
         data : pretrained weights of the network. will create a new one if not set
     """
-    model = FlowNetDorefa(batchNorm=False)
+    model = FlowNetReLu(batchNorm=False)
     if data is not None:
         model.load_state_dict(data['state_dict'])
     return model
