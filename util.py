@@ -35,10 +35,6 @@ class AverageMeter(object):
 def flow2rgb(flow_map, max_value):
 
     flow_map_np = flow_map.detach().cpu().numpy()
-    print (type(flow_map_np))
-    print (flow_map_np.shape)
-    print (flow_map_np[0,55,128])
-    print (flow_map_np[1,55,128])
     _, h, w = flow_map_np.shape
     flow_map_np[:,(flow_map_np[0] == 0) & (flow_map_np[1] == 0)] = float('nan')
     rgb_map = np.ones((3,h,w)).astype(np.float32)

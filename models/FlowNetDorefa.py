@@ -6,11 +6,11 @@ from .util_q import conv, predict_flow, deconv, crop_like, conv_Q, predict_flow_
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 __all__ = [
-    'flownetderefa'
+    'flownetdorefa'
 ]
 
-bitW = 8
-bitA = 8
+bitW = 4
+bitA = 4
 
 
 class FlowNetS(nn.Module):
@@ -103,7 +103,7 @@ class FlowNetS(nn.Module):
         return [param for name, param in self.named_parameters() if 'bias' in name]
 
 
-def flownetderefa(data=None):
+def flownetdorefa(data=None):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 
