@@ -148,7 +148,7 @@ def main():
         co_transform=co_transform,
         split=args.split_file if args.split_file else args.split_value
     )
-    print('{} samples found, {} train samples and {} test samples '.format(len(test_set)+len(train_set),
+    print('{} samp-les found, {} train samples and {} test samples '.format(len(test_set)+len(train_set),
                                                                            len(train_set),
                                                                            len(test_set)))
     train_loader = torch.utils.data.DataLoader(
@@ -243,7 +243,7 @@ def train(train_loader, model, optimizer, epoch, train_writer):
 
         # print ('target:')
         # print (type(target))
-        # print (target.size())
+        # print ('targetsize', target.size(0))
 
         # concatnate the tensor
         input = torch.cat(input,1).to(device)
@@ -296,7 +296,6 @@ def validate(val_loader, model, epoch, output_writers):
     end = time.time()
     for i, (input, target) in enumerate(val_loader):
         target = target.to(device)
-
         # concatnate the tensor
         input = torch.cat(input,1).to(device)
         

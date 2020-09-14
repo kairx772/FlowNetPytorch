@@ -12,8 +12,8 @@ import os
 import numpy as np
 from torch.nn.modules.module import Module
 from torch.autograd import Function
-from .util import correlate
-
+# from .util import correlate
+# from correlation_package.modules.correlation import Correlation
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -25,6 +25,7 @@ __all__ = [
     'pwcnet'
     ]
 
+'''
 class Correlation(Module):
 
     def __init__(self, pad_size=None, kernel_size=None, max_displacement=None,
@@ -102,6 +103,37 @@ class correlation(Function):
                                 self.corr_multiply)
 
         return grad_input1, grad_input2
+'''
+class CostVolumeLayer(nn.Module):
+
+    def __init__(self, max_displacement):
+        super(CostVolumeLayer, self).__init__()
+        # self.args = args
+        self.search_range = max_displacement
+
+    
+    def forward(self, x1, x2):
+        # args = self.args
+
+        # shape = list(src.size())
+        shape = list(x1.shape)
+        shape[1] = (self.search_range * 2 + 1) ** 2
+        cv = torch.zeros(shape).to(device)
+
+        for i in range(-self.search_range, self.search_range + 1):
+            for j in range(-self.search_range, self.search_range + 1):
+                if   i < 0: slice_h, slice_h_r = slice(None, i), slice(-i, None)
+                elif i > 0: slice_h, slice_h_r = slice(i, None), slice(None, -i)
+                else:       slice_h, slice_h_r = slice(None),    slice(None)
+
+                if   j < 0: slice_w, slice_w_r = slice(None, j), slice(-j, None)
+                elif j > 0: slice_w, slice_w_r = slice(j, None), slice(None, -j)
+                else:       slice_w, slice_w_r = slice(None),    slice(None)
+
+                cv[:, (self.search_range*2+1) * i + j, slice_h, slice_w] = (x1[:,:,slice_h, slice_w]  * x2[:,:,slice_h_r, slice_w_r]).sum(1)
+    
+        return cv / shape[1]
+
 
 def conv(in_planes, out_planes, kernel_size=3, stride=1, padding=1, dilation=1):   
     return nn.Sequential(
@@ -146,7 +178,9 @@ class PWCDCNet(nn.Module):
         self.conv6a  = conv(196,196, kernel_size=3, stride=1)
         self.conv6b  = conv(196,196, kernel_size=3, stride=1)
 
-        self.corr = Correlation(pad_size=md, kernel_size=1, max_displacement=md, stride1=1, stride2=1, corr_multiply=1)
+        # self.corr = Correlation(pad_size=md, kernel_size=1, max_displacement=md, stride1=1, stride2=1, corr_multiply=1)
+        # self.corr = Correlation(pad_size = md, kernel_size = 1, max_displacement = md, stride1 = 1, stride2 = 1, corr_multiply = 1).to(device)
+        self.corr = CostVolumeLayer(max_displacement = md)
         self.leakyRELU = nn.LeakyReLU(0.1)
         
         nd = (2*md+1)**2
