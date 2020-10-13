@@ -391,7 +391,7 @@ class PWCDCNet(nn.Module):
         return [param for name, param in self.named_parameters() if 'bias' in name]
 
 # pwc_dc_net
-def pwcnet(path=None):
+def pwcnet(path=None, data=None):
 
     model = PWCDCNet()
     if path is not None:

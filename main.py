@@ -81,12 +81,16 @@ parser.add_argument('--no-date', action='store_true',
                     help='don\'t append date timestamp to folder' )
 parser.add_argument('--div-flow', default=20,
                     help='value by which flow will be divided. Original value is 20 but 1 with batchNorm gives good results')
+parser.add_argument('--wq', default=None, type=int,
+                    help='weight quantization')
+parser.add_argument('--aq', default=None, type=int,
+                    help='activation quantization')
 parser.add_argument('--milestones', default=[100,150,200], metavar='N', nargs='*', help='epochs at which learning rate is divided by 2')
 
 best_EPE = -1
 n_iter = 0
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+# device = torch.device("cpu")
 
 def main():
     global args, best_EPE
@@ -167,7 +171,10 @@ def main():
         network_data = None
         print("=> creating model '{}'".format(args.arch))
 
-    model = models.__dict__[args.arch](network_data).cuda()
+    if args.wq and args.aq is not None:
+        model = models.__dict__[args.arch](data=network_data, bitW=args.wq, bitA=args.aq).cuda()
+    else:
+        model = models.__dict__[args.arch](data=network_data).cuda()
     model = torch.nn.DataParallel(model).cuda()
     cudnn.benchmark = True
 
@@ -233,17 +240,6 @@ def train(train_loader, model, optimizer, epoch, train_writer):
         # measure data loading time
         data_time.update(time.time() - end)
         target = target.to(device)
-        # print ('input:')
-        # print (type(input))
-        # print (type(input[0]))
-        # print (len(input))
-        # print (input[0].size())
-        # print (input[1].size())
-        # print (input[0].type())
-
-        # print ('target:')
-        # print (type(target))
-        # print ('targetsize', target.size(0))
 
         # concatnate the tensor
         input = torch.cat(input,1).to(device)

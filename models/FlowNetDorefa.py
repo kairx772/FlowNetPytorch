@@ -9,20 +9,18 @@ __all__ = [
     'flownetdorefa'
 ]
 
-bitW = 4
-bitA = 4
-
-
 class FlowNetDorefa(nn.Module):
     expansion = 1
 
-    def __init__(self,batchNorm=True):
+    def __init__(self,batchNorm=True, bitW=32, bitA=32):
         super(FlowNetDorefa,self).__init__()
 
         self.batchNorm = batchNorm
+        self.bitW = bitW
+        self.bitA = bitA
         print (batchNorm)
-        print ('bitW', bitW)
-        print ('bitA', bitA)
+        print ('bitW = ', bitW)
+        print ('bitA = ' , bitA)
         self.conv1   = conv(self.batchNorm,   6,   64, kernel_size=7, stride=2)
         self.conv2   = conv_Q(self.batchNorm,  64,  128, kernel_size=5, stride=2, bitW=bitW, bitA=bitA)
         self.conv3   = conv_Q(self.batchNorm, 128,  256, kernel_size=5, stride=2, bitW=bitW, bitA=bitA)
@@ -103,14 +101,14 @@ class FlowNetDorefa(nn.Module):
         return [param for name, param in self.named_parameters() if 'bias' in name]
 
 
-def flownetdorefa(data=None):
+def flownetdorefa(data=None, bitW=32, bitA=32):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 
     Args:
         data : pretrained weights of the network. will create a new one if not set
     """
-    model = FlowNetDorefa(batchNorm=False)
+    model = FlowNetDorefa(batchNorm=False, bitW=bitW, bitA=bitA)
     if data is not None:
         model.load_state_dict(data['state_dict'])
     return model
