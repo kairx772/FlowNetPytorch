@@ -109,6 +109,7 @@ def flownetdorefa(data=None, bitW=32, bitA=32):
         data : pretrained weights of the network. will create a new one if not set
     """
     model = FlowNetDorefa(batchNorm=False, bitW=bitW, bitA=bitA)
+    print (data)
     if data is not None:
         model.load_state_dict(data['state_dict'])
     return model

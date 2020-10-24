@@ -394,10 +394,12 @@ class PWCDCNet(nn.Module):
 def pwcnet(path=None, data=None):
 
     model = PWCDCNet()
-    if path is not None:
-        data = torch.load(path)
-        if 'state_dict' in data.keys():
-            model.load_state_dict(data['state_dict'])
-        else:
-            model.load_state_dict(data)
+    # if path is not None:
+    #     data = torch.load(path)
+    #     if 'state_dict' in data.keys():
+    #         model.load_state_dict(data['state_dict'])
+    #     else:
+    #         model.load_state_dict(data)
+    if data is not None:
+        model.load_state_dict(data['state_dict'])
     return model
