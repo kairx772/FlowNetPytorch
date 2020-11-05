@@ -289,6 +289,7 @@ def validate(val_loader, model, epoch, output_writers):
     # switch to evaluate mode
     model.eval()
 
+    # end = time.time(); runtime_count = -1; sum_runtime = 0;
     end = time.time()
     for i, (input, target) in enumerate(val_loader):
         target = target.to(device)
@@ -296,7 +297,13 @@ def validate(val_loader, model, epoch, output_writers):
         input = torch.cat(input,1).to(device)
         
         # compute output
+        # start_time = time.time(); runtime_count += 1;
         output = model(input)
+        # runtime = (time.time()-start_time); sum_runtime += runtime
+        # if runtime_count == 0: 
+        #     sum_runtime = 0 
+        # else: print ('AvgRunTime: ', sum_runtime/runtime_count)
+        # print ('RunTime:    ', runtime)
         flow2_EPE = args.div_flow*realEPE(output, target, sparse=args.sparse)
         # record EPE
         flow2_EPEs.update(flow2_EPE.item(), target.size(0))

@@ -14,6 +14,8 @@ The dataset is not very big, you might want to only pretrain on it for flownet
 
 def make_dataset(dataset_dir, split, dataset_type='clean'):
     flow_dir = 'flow'
+    print ('========================')
+    print ((os.path.join(dataset_dir,flow_dir)))
     assert(os.path.isdir(os.path.join(dataset_dir,flow_dir)))
     img_dir = dataset_type
     assert(os.path.isdir(os.path.join(dataset_dir,img_dir)))

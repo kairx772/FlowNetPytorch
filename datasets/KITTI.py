@@ -41,6 +41,8 @@ def make_dataset(dir, split, occ=True):
     '''Will search in training folder for folders 'flow_noc' or 'flow_occ'
        and 'colored_0' (KITTI 2012) or 'image_2' (KITTI 2015) '''
     flow_dir = 'flow_occ' if occ else 'flow_noc'
+    print ('==========')
+    print (((os.path.join(dir, flow_dir))))
     assert(os.path.isdir(os.path.join(dir, flow_dir)))
     img_dir = 'colored_0'
     if not os.path.isdir(os.path.join(dir, img_dir)):
