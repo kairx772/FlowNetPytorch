@@ -246,6 +246,7 @@ def train(train_loader, model, optimizer, epoch, train_writer):
 
         # compute output
         output = model(input)
+        # torch.onnx.export(model.module, input, "pwcent.onnx", opset_version=11, verbose=True)
 
         if args.sparse:
             # Since Target pooling is not very precise when sparse,
