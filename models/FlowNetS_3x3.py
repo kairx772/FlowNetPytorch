@@ -17,13 +17,13 @@ class FlowNetS(nn.Module):
         super(FlowNetS,self).__init__()
 
         self.batchNorm = batchNorm
-        self.conv1   = conv(self.batchNorm,   6,   64, stride=2) # 7x7 origin
+        self.conv1   = conv(self.batchNorm,   6,   64) # 7x7 origin
         self.conv1_1 = conv(self.batchNorm,  64,   64)
-        self.conv1_2 = conv(self.batchNorm,  64,   64)
-        self.conv2   = conv(self.batchNorm,  64,  128, stride=2) # 5x5 origin
-        self.conv2_1 = conv(self.batchNorm, 128,  128)
-        self.conv3   = conv(self.batchNorm, 128,  256, stride=2) # 5x5 origin
-        self.conv3_0 = conv(self.batchNorm, 256,  256)
+        self.conv1_2 = conv(self.batchNorm,  64,   64, stride=2)
+        self.conv2   = conv(self.batchNorm,  64,  128) # 5x5 origin
+        self.conv2_1 = conv(self.batchNorm, 128,  128, stride=2)
+        self.conv3   = conv(self.batchNorm, 128,  256) # 5x5 origin
+        self.conv3_0 = conv(self.batchNorm, 256,  256, stride=2)
         self.conv3_1 = conv(self.batchNorm, 256,  256)
         self.conv4   = conv(self.batchNorm, 256,  512, stride=2)
         self.conv4_1 = conv(self.batchNorm, 512,  512)
