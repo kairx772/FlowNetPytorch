@@ -239,7 +239,7 @@ def deconv(in_planes, out_planes):
 def deconv_Q(in_planes, out_planes, bitW=32, bitA=32):
     return nn.Sequential(
         ConvTrans2d_Q(in_planes, out_planes, kernel_size=4, stride=2, padding=1, bias=False, bitW=bitW),
-        nn.ReLU()
+        nn.ReLU(),
         Act_Q(bit=bitA)
     )
 
