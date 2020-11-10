@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn.init import kaiming_normal_, constant_
-from .util_dore_lsq import conv, predict_flow, deconv, crop_like
+from .util_dore_lsq import conv, predict_flow, deconv, crop_like, conv_Q, predict_flow_Q, deconv_Q, ConvTrans2d_Q
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -10,42 +10,47 @@ __all__ = [
 ]
 
 
-class FlowNetS(nn.Module):
+class FlowNetS33_Q(nn.Module):
     expansion = 1
 
-    def __init__(self,batchNorm=True):
-        super(FlowNetS,self).__init__()
+    def __init__(self,batchNorm=True, bitW=32, bitA=32):
+        super(FlowNetS33_Q,self).__init__()
+        
+        self.bitW = bitW
+        self.bitA = bitA
+        print ('bitW = ', bitW)
+        print ('bitA = ' , bitA)
 
         self.batchNorm = batchNorm
         self.conv1   = conv(self.batchNorm,   6,   64) # 7x7 origin
-        self.conv1_1 = conv(self.batchNorm,  64,   64)
-        self.conv1_2 = conv(self.batchNorm,  64,   64, stride=2)
-        self.conv2   = conv(self.batchNorm,  64,  128) # 5x5 origin
-        self.conv2_1 = conv(self.batchNorm, 128,  128, stride=2)
-        self.conv3   = conv(self.batchNorm, 128,  256) # 5x5 origin
-        self.conv3_0 = conv(self.batchNorm, 256,  256, stride=2)
-        self.conv3_1 = conv(self.batchNorm, 256,  256)
-        self.conv4   = conv(self.batchNorm, 256,  512, stride=2)
-        self.conv4_1 = conv(self.batchNorm, 512,  512)
-        self.conv5   = conv(self.batchNorm, 512,  512, stride=2)
-        self.conv5_1 = conv(self.batchNorm, 512,  512)
-        self.conv6   = conv(self.batchNorm, 512, 1024, stride=2)
-        self.conv6_1 = conv(self.batchNorm,1024, 1024)
+        self.conv1_1 = conv_Q(self.batchNorm,  64,   64)
+        self.conv1_2 = conv_Q(self.batchNorm,  64,   64, stride=2)
+        self.conv2   = conv_Q(self.batchNorm,  64,  128) # 5x5 origin
+        self.conv2_1 = conv_Q(self.batchNorm, 128,  128, stride=2)
+        self.conv3   = conv_Q(self.batchNorm, 128,  256) # 5x5 origin
+        self.conv3_0 = conv_Q(self.batchNorm, 256,  256, stride=2)
+        self.conv3_1 = conv_Q(self.batchNorm, 256,  256)
+        self.conv4   = conv_Q(self.batchNorm, 256,  512, stride=2)
+        self.conv4_1 = conv_Q(self.batchNorm, 512,  512)
+        self.conv5   = conv_Q(self.batchNorm, 512,  512, stride=2)
+        self.conv5_1 = conv_Q(self.batchNorm, 512,  512)
+        self.conv6   = conv_Q(self.batchNorm, 512, 1024, stride=2)
+        self.conv6_1 = conv_Q(self.batchNorm,1024, 1024)
 
-        self.deconv5 = deconv(1024,512)
-        self.deconv4 = deconv(1026,256)
-        self.deconv3 = deconv(770,128)
-        self.deconv2 = deconv(386,64)
+        self.deconv5 = deconv_Q(1024,512)
+        self.deconv4 = deconv_Q(1026,256)
+        self.deconv3 = deconv_Q(770,128)
+        self.deconv2 = deconv_Q(386,64)
 
-        self.predict_flow6 = predict_flow(1024)
-        self.predict_flow5 = predict_flow(1026)
-        self.predict_flow4 = predict_flow(770)
-        self.predict_flow3 = predict_flow(386)
+        self.predict_flow6 = predict_flow_Q(1024)
+        self.predict_flow5 = predict_flow_Q(1026)
+        self.predict_flow4 = predict_flow_Q(770)
+        self.predict_flow3 = predict_flow_Q(386)
         self.predict_flow2 = predict_flow(194)
 
-        self.upsampled_flow6_to_5 = nn.ConvTranspose2d(2, 2, 4, 2, 1, bias=False)
-        self.upsampled_flow5_to_4 = nn.ConvTranspose2d(2, 2, 4, 2, 1, bias=False)
-        self.upsampled_flow4_to_3 = nn.ConvTranspose2d(2, 2, 4, 2, 1, bias=False)
+        self.upsampled_flow6_to_5 = ConvTrans2d_Q(2, 2, 4, 2, 1, bias=False)
+        self.upsampled_flow5_to_4 = ConvTrans2d_Q(2, 2, 4, 2, 1, bias=False)
+        self.upsampled_flow4_to_3 = ConvTrans2d_Q(2, 2, 4, 2, 1, bias=False)
         self.upsampled_flow3_to_2 = nn.ConvTranspose2d(2, 2, 4, 2, 1, bias=False)
 
         for m in self.modules():
@@ -101,27 +106,27 @@ class FlowNetS(nn.Module):
         return [param for name, param in self.named_parameters() if 'bias' in name]
 
 
-def flownets33q(data=None):
+def flownets33q(data=None, bitW=32, bitA=32):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 
     Args:
         data : pretrained weights of the network. will create a new one if not set
     """
-    model = FlowNetS(batchNorm=False)
+    model = FlowNetS33_Q(batchNorm=False, bitW=bitW, bitA=bitA)
     if data is not None:
-        model.load_state_dict(data['state_dict'])
+        model.load_state_dict(data['state_dict'], strict=False)
     return model
 
 
-def flownets33q_bn(data=None):
+def flownets33q_bn(data=None, bitW=32, bitA=32):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 
     Args:
         data : pretrained weights of the network. will create a new one if not set
     """
-    model = FlowNetS(batchNorm=True)
+    model = FlowNetS33_Q(batchNorm=True, bitW=bitW, bitA=bitA)
     if data is not None:
-        model.load_state_dict(data['state_dict'])
+        model.load_state_dict(data['state_dict'], strict=False)
     return model

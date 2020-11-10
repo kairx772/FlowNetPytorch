@@ -1,107 +1,239 @@
-import sys
-sys.path.append('core')
-
-from PIL import Image
 import argparse
 import os
 import time
+
 import numpy as np
 import torch
 import torch.nn.functional as F
-import matplotlib.pyplot as plt
-
+import torch.nn.parallel
+import torch.backends.cudnn as cudnn
+import torch.optim
+import torch.utils.data
+import torchvision.transforms as transforms
+import flow_transforms
+import models
 import datasets
-from utils import flow_viz
-from utils import frame_utils
+from datasets import datasets_f2
+from multiscaleloss import multiscaleEPE, realEPE
+import datetime
+from tensorboardX import SummaryWriter
+from util import flow2rgb, AverageMeter, save_checkpoint, InputPadder
 
-from raft import RAFT
-from utils.utils import InputPadder, forward_interpolate
-import time
+import warnings
+warnings.filterwarnings("ignore")
 
 
-@torch.no_grad()
-def create_sintel_submission(model, iters=32, warm_start=False, output_path='sintel_submission'):
-    """ Create submission for the Sintel leaderboard """
+model_names = sorted(name for name in models.__dict__
+                     if name.islower() and not name.startswith("__"))
+dataset_names = sorted(name for name in datasets.__all__)
+
+parser = argparse.ArgumentParser(description='PyTorch FlowNet Training on several datasets',
+                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument('data', metavar='DIR',
+                    help='path to dataset')
+parser.add_argument('--dataset', metavar='DATASET', default='flying_chairs',
+                    choices=dataset_names,
+                    help='dataset type : ' +
+                    ' | '.join(dataset_names))
+group = parser.add_mutually_exclusive_group()
+group.add_argument('-s', '--split-file', default=None, type=str,
+                   help='test-val split file')
+group.add_argument('--split-value', default=0.8, type=float,
+                   help='test-val split proportion between 0 (only test) and 1 (only train), '
+                        'will be overwritten if a split file is set')
+parser.add_argument('--arch', '-a', metavar='ARCH', default='flownets',
+                    choices=model_names,
+                    help='model architecture, overwritten if pretrained is specified: ' +
+                    ' | '.join(model_names))
+parser.add_argument('--solver', default='adam',choices=['adam','sgd'],
+                    help='solver algorithms')
+parser.add_argument('-j', '--workers', default=8, type=int, metavar='N',
+                    help='number of data loading workers')
+parser.add_argument('--epochs', default=300, type=int, metavar='N',
+                    help='number of total epochs to run')
+parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
+                    help='manual epoch number (useful on restarts)')
+parser.add_argument('--epoch-size', default=1000, type=int, metavar='N',
+                    help='manual epoch size (will match dataset size if set to 0)')
+parser.add_argument('-b', '--batch-size', default=8, type=int,
+                    metavar='N', help='mini-batch size')
+parser.add_argument('--lr', '--learning-rate', default=0.0001, type=float,
+                    metavar='LR', help='initial learning rate')
+parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
+                    help='momentum for sgd, alpha parameter for adam')
+parser.add_argument('--beta', default=0.999, type=float, metavar='M',
+                    help='beta parameter for adam')
+parser.add_argument('--weight-decay', '--wd', default=4e-4, type=float,
+                    metavar='W', help='weight decay')
+parser.add_argument('--bias-decay', default=0, type=float,
+                    metavar='B', help='bias decay')
+parser.add_argument('--multiscale-weights', '-w', default=[0.005,0.01,0.02,0.08,0.32], type=float, nargs=5,
+                    help='training weight for each scale, from highest resolution (flow2) to lowest (flow6)',
+                    metavar=('W2', 'W3', 'W4', 'W5', 'W6'))
+parser.add_argument('--sparse', action='store_true',
+                    help='look for NaNs in target flow when computing EPE, avoid if flow is garantied to be dense,'
+                    'automatically seleted when choosing a KITTIdataset')
+parser.add_argument('--print-freq', '-p', default=10, type=int,
+                    metavar='N', help='print frequency')
+parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
+                    help='evaluate model on validation set')
+parser.add_argument('--pretrained', dest='pretrained', default=None,
+                    help='path to pre-trained model')
+parser.add_argument('--no-date', action='store_true',
+                    help='don\'t append date timestamp to folder' )
+parser.add_argument('--div-flow', default=20,
+                    help='value by which flow will be divided. Original value is 20 but 1 with batchNorm gives good results')
+parser.add_argument('--qw', default=None, type=int,
+                    help='weight quantization')
+parser.add_argument('--qa', default=None, type=int,
+                    help='activation quantization')
+parser.add_argument('--milestones', default=[100,150,200], metavar='N', nargs='*', help='epochs at which learning rate is divided by 2')
+
+best_EPE = -1
+n_iter = 0
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cpu")
+
+def main():
+    global args, best_EPE
+    args = parser.parse_args()
+
+    # Data loading code
+    input_transform = transforms.Compose([
+        flow_transforms.ArrayToTensor(),
+        transforms.Normalize(mean=[0,0,0], std=[255,255,255]),
+        transforms.Normalize(mean=[0.45,0.432,0.411], std=[1,1,1])
+    ])
+    target_transform = transforms.Compose([
+        flow_transforms.ArrayToTensor(),
+        transforms.Normalize(mean=[0,0],std=[args.div_flow,args.div_flow])
+    ])
+
+    if 'KITTI' in args.dataset:
+        args.sparse = True
+    if args.sparse:
+        co_transform = flow_transforms.Compose([
+            flow_transforms.RandomCrop((320,448)),
+            flow_transforms.RandomVerticalFlip(),
+            flow_transforms.RandomHorizontalFlip()
+        ])
+    else:
+        co_transform = flow_transforms.Compose([
+            flow_transforms.RandomTranslate(10),
+            flow_transforms.RandomRotate(10,5),
+            flow_transforms.RandomCrop((320,448)),
+            flow_transforms.RandomVerticalFlip(),
+            flow_transforms.RandomHorizontalFlip()
+        ])
+
+    print("=> fetching img pairs in '{}'".format(args.data))
+    train_set, test_set = datasets.__dict__[args.dataset](
+        args.data,
+        transform=input_transform,
+        target_transform=target_transform,
+        co_transform=co_transform,
+        split=args.split_file if args.split_file else args.split_value
+    )
+    print('{} samp-les found, {} train samples and {} test samples '.format(len(test_set)+len(train_set),
+                                                                           len(train_set),
+                                                                           len(test_set)))
+    train_loader = torch.utils.data.DataLoader(
+        train_set, batch_size=args.batch_size,
+        num_workers=args.workers, pin_memory=True, shuffle=True)
+    val_loader = torch.utils.data.DataLoader(
+        test_set, batch_size=args.batch_size,
+        num_workers=args.workers, pin_memory=True, shuffle=False)
+
+    # create model
+    if args.pretrained:
+        network_data = torch.load(args.pretrained)
+        # args.arch = network_data['arch']
+        print("=> using pre-trained model '{}'".format(args.arch))
+    else:
+        network_data = None
+        print("=> creating model '{}'".format(args.arch))
+
+    if args.qw and args.qa is not None:
+        model = models.__dict__[args.arch](data=network_data, bitW=args.qw, bitA=args.qa).cuda()
+    else:
+        model = models.__dict__[args.arch](data=network_data).cuda()
+    model = torch.nn.DataParallel(model).cuda()
+    cudnn.benchmark = True
+
+    assert(args.solver in ['adam', 'sgd'])
+    print('=> setting {} solver'.format(args.solver))
+    param_groups = [{'params': model.module.bias_parameters(), 'weight_decay': args.bias_decay},
+                    {'params': model.module.weight_parameters(), 'weight_decay': args.weight_decay}]
+    if args.solver == 'adam':
+        optimizer = torch.optim.Adam(param_groups, args.lr,
+                                     betas=(args.momentum, args.beta))
+    elif args.solver == 'sgd':
+        optimizer = torch.optim.SGD(param_groups, args.lr,
+                                    momentum=args.momentum)
+
+    if args.evaluate:
+        best_EPE = validate(val_loader, model, 0)
+        # validate_chairs(model.module)
+        # validate_sintel(model.module)
+        return
+    
+
+
+
+
+
+def validate(val_loader, model, epoch):
+    global args
+
+    batch_time = AverageMeter()
+    flow2_EPEs = AverageMeter()
+
+    # switch to evaluate mode
     model.eval()
-    for dstype in ['clean', 'final']:
-        test_dataset = datasets.MpiSintel(split='test', aug_params=None, dstype=dstype)
+
+    # end = time.time(); runtime_count = -1; sum_runtime = 0;
+    end = time.time()
+    for i, (input, target) in enumerate(val_loader):
+        target = target.to(device)
+        # concatnate the tensor
+        input = torch.cat(input,1).to(device)
         
-        flow_prev, sequence_prev = None, None
-        for test_id in range(len(test_dataset)):
-            image1, image2, (sequence, frame) = test_dataset[test_id]
-            if sequence != sequence_prev:
-                flow_prev = None
-            
-            padder = InputPadder(image1.shape)
-            image1, image2 = padder.pad(image1[None].cuda(), image2[None].cuda())
+        # compute output
+        # start_time = time.time(); runtime_count += 1;
+        output = model(input)
+        # runtime = (time.time()-start_time); sum_runtime += runtime
+        # if runtime_count == 0: 
+        #     sum_runtime = 0 
+        # else: print ('AvgRunTime: ', sum_runtime/runtime_count)
+        # print ('RunTime:    ', runtime)
+        flow2_EPE = args.div_flow*realEPE(output, target, sparse=args.sparse)
+        # record EPE
+        flow2_EPEs.update(flow2_EPE.item(), target.size(0))
 
-            flow_low, flow_pr = model(image1, image2, iters=iters, flow_init=flow_prev, test_mode=True)
-            flow = padder.unpad(flow_pr[0]).permute(1, 2, 0).cpu().numpy()
+        # measure elapsed time
+        batch_time.update(time.time() - end)
+        end = time.time()
 
-            if warm_start:
-                flow_prev = forward_interpolate(flow_low[0])[None].cuda()
-            
-            output_dir = os.path.join(output_path, dstype, sequence)
-            output_file = os.path.join(output_dir, 'frame%04d.flo' % (frame+1))
+        '''
+        if i < len(output_writers):  # log first output of first batches
+            if epoch == 0:
+                mean_values = torch.tensor([0.45,0.432,0.411], dtype=input.dtype).view(3,1,1)
+                output_writers[i].add_image('GroundTruth', flow2rgb(args.div_flow * target[0], max_value=10), 0)
+                output_writers[i].add_image('Inputs', (input[0,:3].cpu() + mean_values).clamp(0,1), 0)
+                output_writers[i].add_image('Inputs', (input[0,3:].cpu() + mean_values).clamp(0,1), 1)
+            output_writers[i].add_image('FlowNet Outputs', flow2rgb(args.div_flow * output[0], max_value=10), epoch)
+        '''
 
-            if not os.path.exists(output_dir):
-                os.makedirs(output_dir)
+        if i % args.print_freq == 0:
+            print('Test: [{0}/{1}]\t Time {2}\t EPE {3}'
+                  .format(i, len(val_loader), batch_time, flow2_EPEs))
 
-            frame_utils.writeFlow(output_file, flow)
-            sequence_prev = sequence
+    print(' * EPE {:.3f}'.format(flow2_EPEs.avg))
 
-
-@torch.no_grad()
-def create_kitti_submission(model, iters=24, output_path='kitti_submission'):
-    """ Create submission for the Sintel leaderboard """
-    model.eval()
-    test_dataset = datasets.KITTI(split='testing', aug_params=None)
-
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
-
-    for test_id in range(len(test_dataset)):
-        image1, image2, (frame_id, ) = test_dataset[test_id]
-        padder = InputPadder(image1.shape, mode='kitti')
-        image1, image2 = padder.pad(image1[None].cuda(), image2[None].cuda())
-
-        _, flow_pr = model(image1, image2, iters=iters, test_mode=True)
-        flow = padder.unpad(flow_pr[0]).permute(1, 2, 0).cpu().numpy()
-
-        output_filename = os.path.join(output_path, frame_id)
-        frame_utils.writeFlowKITTI(output_filename, flow)
-
+    return flow2_EPEs.avg
 
 @torch.no_grad()
-def validate_chairs(model, iters=24):
-    """ Perform evaluation on the FlyingChairs (test) split """
-    model.eval()
-    epe_list = []
-    end_time = time.time()
-    val_dataset = datasets.FlyingChairs(split='validation')
-    time_count = 0
-    sum_time = 0
-    for val_id in range(len(val_dataset)):
-        image1, image2, flow_gt, _ = val_dataset[val_id]
-        image1 = image1[None].cuda()
-        image2 = image2[None].cuda()
-        start_time = time.time()
-        _, flow_pr = model(image1, image2, iters=iters, test_mode=True)
-        sum_time += (time.time()-start_time)
-        time_count += 1
-        print ('MeanRunTime: ', (sum_time/time_count))
-        epe = torch.sum((flow_pr[0].cpu() - flow_gt)**2, dim=0).sqrt()
-        epe_list.append(epe.view(-1).numpy())
-        # print ('EpoTime: ', (time.time()-end_time))
-        end_time = time.time()
-
-    epe = np.mean(np.concatenate(epe_list))
-    print("Validation Chairs EPE: %f" % epe)
-    return {'chairs': epe}
-
-
-@torch.no_grad()
-def validate_sintel(model, iters=32):
+def validate_sintel(model):
     """ Peform validation using the Sintel (train) split """
     model.eval()
     results = {}
@@ -109,7 +241,7 @@ def validate_sintel(model, iters=32):
     time_count = 0
     sum_time = 0
     for dstype in ['clean', 'final']:
-        val_dataset = datasets.MpiSintel(split='training', dstype=dstype)
+        val_dataset = datasets_f2.MpiSintel(split='training', dstype=dstype)
         epe_list = []
 
         for val_id in range(len(val_dataset)):
@@ -120,14 +252,26 @@ def validate_sintel(model, iters=32):
             padder = InputPadder(image1.shape)
             image1, image2 = padder.pad(image1, image2)
             start_time = time.time()
-            flow_low, flow_pr = model(image1, image2, iters=iters, test_mode=True)
+
+            input = torch.cat((image1, image2), 1).to(device)
+            output = model(input)
+
+            target = flow_gt.to(device)
+            _, h, w = target.size()
+
+            # print ('output size:', output.size())
+            # print ('target size:', target.size())
+            flow_pr = F.interpolate(output, (h,w), mode='bilinear', align_corners=False)
+            # flow_pr = realEPE(output, target, sparse=args.sparse)
+            
+            # flow_pr = model(image1, image2)
             sum_time += (time.time()-start_time)
             time_count += 1
             # print ('MeanRunTime: ', (sum_time/time_count))
             # print ('EpoTime: ', (time.time()-end_time))
             end_time = time.time()
 
-            flow = padder.unpad(flow_pr[0]).cpu()
+            flow = (flow_pr).cpu()
 
             epe = torch.sum((flow - flow_gt)**2, dim=0).sqrt()
             epe_list.append(epe.view(-1).numpy())
@@ -144,72 +288,41 @@ def validate_sintel(model, iters=32):
 
     return results
 
-
 @torch.no_grad()
-def validate_kitti(model, iters=24):
-    """ Peform validation using the KITTI-2015 (train) split """
+def validate_chairs(model):
+    """ Perform evaluation on the FlyingChairs (test) split """
     model.eval()
-    val_dataset = datasets.KITTI(split='training')
-
-    out_list, epe_list = [], []
+    epe_list = []
+    end_time = time.time()
+    val_dataset = datasets_f2.FlyingChairs(split='validation')
+    time_count = 0
+    sum_time = 0
     for val_id in range(len(val_dataset)):
-        image1, image2, flow_gt, valid_gt = val_dataset[val_id]
+        image1, image2, flow_gt, _ = val_dataset[val_id]
         image1 = image1[None].cuda()
         image2 = image2[None].cuda()
 
-        padder = InputPadder(image1.shape, mode='kitti')
-        image1, image2 = padder.pad(image1, image2)
+        input = torch.cat((image1, image2), 1).to(device)
+        output = model(input)
 
-        flow_low, flow_pr = model(image1, image2, iters=iters, test_mode=True)
-        flow = padder.unpad(flow_pr[0]).cpu()
+        target = flow_gt.to(device)
+        _, h, w = target.size()
 
-        epe = torch.sum((flow - flow_gt)**2, dim=0).sqrt()
-        mag = torch.sum(flow_gt**2, dim=0).sqrt()
+        flow_pr = F.interpolate(output, (h,w), mode='bilinear', align_corners=False)
 
-        epe = epe.view(-1)
-        mag = mag.view(-1)
-        val = valid_gt.view(-1) >= 0.5
+        start_time = time.time()
+        # _, flow_pr = model(image1, image2, iters=iters, test_mode=True)
+        sum_time += (time.time()-start_time)
+        time_count += 1
+        print ('MeanRunTime: ', (sum_time/time_count))
+        epe = torch.sum((flow_pr[0].cpu() - flow_gt)**2, dim=0).sqrt()
+        epe_list.append(epe.view(-1).numpy())
+        # print ('EpoTime: ', (time.time()-end_time))
+        end_time = time.time()
 
-        out = ((epe > 3.0) & ((epe/mag) > 0.05)).float()
-        epe_list.append(epe[val].mean().item())
-        out_list.append(out[val].cpu().numpy())
-
-    epe_list = np.array(epe_list)
-    out_list = np.concatenate(out_list)
-
-    epe = np.mean(epe_list)
-    f1 = 100 * np.mean(out_list)
-
-    print("Validation KITTI: %f, %f" % (epe, f1))
-    return {'kitti-epe': epe, 'kitti-f1': f1}
-
+    epe = np.mean(np.concatenate(epe_list))
+    print("Validation Chairs EPE: %f" % epe)
+    return {'chairs': epe}
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--model', help="restore checkpoint")
-    parser.add_argument('--dataset', help="dataset for evaluation")
-    parser.add_argument('--small', action='store_true', help='use small model')
-    parser.add_argument('--mixed_precision', action='store_true', help='use mixed precision')
-    parser.add_argument('--alternate_corr', action='store_true', help='use efficent correlation implementation')
-    args = parser.parse_args()
-
-    model = torch.nn.DataParallel(RAFT(args))
-    model.load_state_dict(torch.load(args.model))
-
-    model.cuda()
-    model.eval()
-
-    # create_sintel_submission(model.module, warm_start=True)
-    # create_kitti_submission(model.module)
-
-    with torch.no_grad():
-        if args.dataset == 'chairs':
-            validate_chairs(model.module)
-
-        elif args.dataset == 'sintel':
-            validate_sintel(model.module)
-
-        elif args.dataset == 'kitti':
-            validate_kitti(model.module)
-
-
+    main()

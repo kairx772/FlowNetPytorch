@@ -20,6 +20,58 @@ except ImportError as e:
         warnings.warn("failed to load custom correlation module"
                       "which is needed for FlowNetC", ImportWarning)
 
+class RoundFn_act(Function):
+    @staticmethod
+    def forward(ctx, input, alpha, pwr_coef, bit, signed):
+        if signed == True:
+            x_alpha_div = (input  / alpha ).round().clamp( min =-(pwr_coef), max = (pwr_coef-1)) *  alpha
+        else:
+            x_alpha_div = (input  / alpha ).round().clamp( min =0, max = (pwr_coef-1)) *  alpha
+        ctx.pwr_coef = pwr_coef
+        ctx.bit      = bit
+        ctx.signed   = signed
+        ctx.save_for_backward(input, alpha)
+        return x_alpha_div 
+    @staticmethod
+    def backward(ctx, grad_output):
+        input, alpha = ctx.saved_tensors
+        pwr_coef = ctx.pwr_coef
+        bit = ctx.bit
+        signed = ctx.signed
+       
+        if signed == True:
+            low_bound = -(pwr_coef)
+        else:
+            low_bound = 0
+        quan_Em =  (input  / alpha   ).round().clamp( min =low_bound, max = (pwr_coef-1)) * alpha 
+        quan_El =  (input / ( alpha  / 2)   ).round().clamp( min =low_bound, max = (pwr_coef-1)) * ( alpha  / 2)
+        quan_Er = (input / ( alpha * 2)  ).round().clamp( min =low_bound, max = (pwr_coef-1)) * ( alpha * 2)
+        El = torch.sum(torch.pow((input - quan_El), 2 ))
+        Er = torch.sum(torch.pow((input - quan_Er), 2 ))
+        Em = torch.sum(torch.pow((input - quan_Em), 2 ))
+        d_better = torch.Tensor([El, Em, Er]).argmin() -1
+        delta_G = (-1) * (torch.pow(alpha , 2)) * (  d_better) 
+
+        #delta_G = alpha * (2**d_better)
+
+        grad_input = grad_output.clone()
+        # grad_input[grad_input!=grad_input] = 0
+        if signed == True:
+            # grad_input = torch.where((input) < ( (-1) * pwr_coef  * alpha ) , torch.full_like(grad_input,0), grad_input ) # ((-pwr_coef) * alpha)
+            # grad_input = torch.where((input) > ((pwr_coef    - 1) * alpha ),  torch.full_like(grad_input,0), grad_input)
+            grad_input[(input) < ( (-1) * pwr_coef  * alpha )] = 0
+            grad_input[(input) > ((pwr_coef - 1) * alpha )] = 0
+
+        else:
+            # grad_input = torch.where( (input) < 0 , torch.full_like(grad_input,0), grad_input )
+            # grad_input = torch.where((input) > ((pwr_coef - 1) * alpha ),  torch.full_like(grad_input,0), grad_input)
+            grad_input[(input) < 0] = 0
+            grad_input[(input) > ((pwr_coef - 1) * alpha )] = 0
+            
+
+        return  grad_input, delta_G, None, None, None
+
+
 
 class quantize(torch.autograd.Function):
     @staticmethod
@@ -214,13 +266,13 @@ def conv_Q(batchNorm, in_planes, out_planes, kernel_size=3, stride=1, bitW=32, b
         return nn.Sequential(
             Conv2d_Q(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=(kernel_size-1)//2, bias=False, bitW=bitW),
             nn.BatchNorm2d(out_planes),
-            Act_Q(bitA=bitA)
+            ACT_Q(bitA=bitA)
         )
     else:
         return nn.Sequential(
             Conv2d_Q(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=(kernel_size-1)//2, bias=True, bitW=bitW),
             nn.ReLU(),
-            Act_Q(bit=bitA)
+            ACT_Q(bit=bitA)
         )
 
 
@@ -240,7 +292,7 @@ def deconv_Q(in_planes, out_planes, bitW=32, bitA=32):
     return nn.Sequential(
         ConvTrans2d_Q(in_planes, out_planes, kernel_size=4, stride=2, padding=1, bias=False, bitW=bitW),
         nn.ReLU(),
-        Act_Q(bit=bitA)
+        ACT_Q(bit=bitA)
     )
 
 

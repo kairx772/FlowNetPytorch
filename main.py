@@ -81,9 +81,9 @@ parser.add_argument('--no-date', action='store_true',
                     help='don\'t append date timestamp to folder' )
 parser.add_argument('--div-flow', default=20,
                     help='value by which flow will be divided. Original value is 20 but 1 with batchNorm gives good results')
-parser.add_argument('--wq', default=None, type=int,
+parser.add_argument('--qw', default=None, type=int,
                     help='weight quantization')
-parser.add_argument('--aq', default=None, type=int,
+parser.add_argument('--qa', default=None, type=int,
                     help='activation quantization')
 parser.add_argument('--milestones', default=[100,150,200], metavar='N', nargs='*', help='epochs at which learning rate is divided by 2')
 
@@ -165,14 +165,14 @@ def main():
     # create model
     if args.pretrained:
         network_data = torch.load(args.pretrained)
-        args.arch = network_data['arch']
+        # args.arch = network_data['arch']
         print("=> using pre-trained model '{}'".format(args.arch))
     else:
         network_data = None
         print("=> creating model '{}'".format(args.arch))
 
-    if args.wq and args.aq is not None:
-        model = models.__dict__[args.arch](data=network_data, bitW=args.wq, bitA=args.aq).cuda()
+    if args.qw and args.qa is not None:
+        model = models.__dict__[args.arch](data=network_data, bitW=args.qw, bitA=args.qa).cuda()
     else:
         model = models.__dict__[args.arch](data=network_data).cuda()
     model = torch.nn.DataParallel(model).cuda()
