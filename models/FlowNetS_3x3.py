@@ -110,7 +110,7 @@ def flownets33(data=None):
     """
     model = FlowNetS(batchNorm=False)
     if data is not None:
-        model.load_state_dict(data['state_dict'])
+        model.load_state_dict(data['state_dict'], strict=False)
     return model
 
 
@@ -123,5 +123,5 @@ def flownets33_bn(data=None):
     """
     model = FlowNetS(batchNorm=True)
     if data is not None:
-        model.load_state_dict(data['state_dict'])
+        model.load_state_dict(data['state_dict'], strict=False)
     return model

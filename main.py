@@ -43,7 +43,7 @@ parser.add_argument('--arch', '-a', metavar='ARCH', default='flownets',
                     choices=model_names,
                     help='model architecture, overwritten if pretrained is specified: ' +
                     ' | '.join(model_names))
-parser.add_argument('--solver', default='adam',choices=['adam','sgd'],
+parser.add_argument('--solver', default='adam',choices=['adam','sgd', 'adamw'],
                     help='solver algorithms')
 parser.add_argument('-j', '--workers', default=8, type=int, metavar='N',
                     help='number of data loading workers')
@@ -79,7 +79,7 @@ parser.add_argument('--pretrained', dest='pretrained', default=None,
                     help='path to pre-trained model')
 parser.add_argument('--no-date', action='store_true',
                     help='don\'t append date timestamp to folder' )
-parser.add_argument('--div-flow', default=20,
+parser.add_argument('--div-flow', default=20, type=int,
                     help='value by which flow will be divided. Original value is 20 but 1 with batchNorm gives good results')
 parser.add_argument('--qw', default=None, type=int,
                     help='weight quantization')
@@ -178,7 +178,7 @@ def main():
     model = torch.nn.DataParallel(model).cuda()
     cudnn.benchmark = True
 
-    assert(args.solver in ['adam', 'sgd'])
+    assert(args.solver in ['adam', 'sgd', 'adamw'])
     print('=> setting {} solver'.format(args.solver))
     param_groups = [{'params': model.module.bias_parameters(), 'weight_decay': args.bias_decay},
                     {'params': model.module.weight_parameters(), 'weight_decay': args.weight_decay}]
@@ -188,6 +188,9 @@ def main():
     elif args.solver == 'sgd':
         optimizer = torch.optim.SGD(param_groups, args.lr,
                                     momentum=args.momentum)
+    elif args.solver == 'adamw':
+        optimizer = torch.optim.Adam(param_groups, args.lr,
+                                    betas=(args.momentum, args.beta))
 
     if args.evaluate:
         best_EPE = validate(val_loader, model, 0, output_writers)

@@ -10,6 +10,7 @@ import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
 import torchvision.transforms as transforms
+from torchsummary import summary
 import flow_transforms
 import models
 import datasets
@@ -18,6 +19,7 @@ from multiscaleloss import multiscaleEPE, realEPE
 import datetime
 from tensorboardX import SummaryWriter
 from util import flow2rgb, AverageMeter, save_checkpoint, InputPadder
+
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -81,7 +83,7 @@ parser.add_argument('--pretrained', dest='pretrained', default=None,
                     help='path to pre-trained model')
 parser.add_argument('--no-date', action='store_true',
                     help='don\'t append date timestamp to folder' )
-parser.add_argument('--div-flow', default=20,
+parser.add_argument('--div-flow', default=20, type=int,
                     help='value by which flow will be divided. Original value is 20 but 1 with batchNorm gives good results')
 parser.add_argument('--qw', default=None, type=int,
                     help='weight quantization')
@@ -137,9 +139,9 @@ def main():
     print('{} samp-les found, {} train samples and {} test samples '.format(len(test_set)+len(train_set),
                                                                            len(train_set),
                                                                            len(test_set)))
-    train_loader = torch.utils.data.DataLoader(
-        train_set, batch_size=args.batch_size,
-        num_workers=args.workers, pin_memory=True, shuffle=True)
+    # train_loader = torch.utils.data.DataLoader(
+    #     train_set, batch_size=args.batch_size,
+    #     num_workers=args.workers, pin_memory=True, shuffle=True)
     val_loader = torch.utils.data.DataLoader(
         test_set, batch_size=args.batch_size,
         num_workers=args.workers, pin_memory=True, shuffle=False)
@@ -171,6 +173,11 @@ def main():
         optimizer = torch.optim.SGD(param_groups, args.lr,
                                     momentum=args.momentum)
 
+    print (summary(model, (6, 320, 448)))
+    print (model)
+
+
+
     if args.evaluate:
         best_EPE = validate(val_loader, model, 0)
         # validate_chairs(model.module)
@@ -197,6 +204,8 @@ def validate(val_loader, model, epoch):
         target = target.to(device)
         # concatnate the tensor
         input = torch.cat(input,1).to(device)
+
+        # torch.onnx.export(model.module, input, "test/model.onnx", opset_version=11, verbose=True)
         
         # compute output
         # start_time = time.time(); runtime_count += 1;
@@ -231,98 +240,6 @@ def validate(val_loader, model, epoch):
     print(' * EPE {:.3f}'.format(flow2_EPEs.avg))
 
     return flow2_EPEs.avg
-
-@torch.no_grad()
-def validate_sintel(model):
-    """ Peform validation using the Sintel (train) split """
-    model.eval()
-    results = {}
-    end_time = time.time()
-    time_count = 0
-    sum_time = 0
-    for dstype in ['clean', 'final']:
-        val_dataset = datasets_f2.MpiSintel(split='training', dstype=dstype)
-        epe_list = []
-
-        for val_id in range(len(val_dataset)):
-            image1, image2, flow_gt, _ = val_dataset[val_id]
-            image1 = image1[None].cuda()
-            image2 = image2[None].cuda()
-
-            padder = InputPadder(image1.shape)
-            image1, image2 = padder.pad(image1, image2)
-            start_time = time.time()
-
-            input = torch.cat((image1, image2), 1).to(device)
-            output = model(input)
-
-            target = flow_gt.to(device)
-            _, h, w = target.size()
-
-            # print ('output size:', output.size())
-            # print ('target size:', target.size())
-            flow_pr = F.interpolate(output, (h,w), mode='bilinear', align_corners=False)
-            # flow_pr = realEPE(output, target, sparse=args.sparse)
-            
-            # flow_pr = model(image1, image2)
-            sum_time += (time.time()-start_time)
-            time_count += 1
-            # print ('MeanRunTime: ', (sum_time/time_count))
-            # print ('EpoTime: ', (time.time()-end_time))
-            end_time = time.time()
-
-            flow = (flow_pr).cpu()
-
-            epe = torch.sum((flow - flow_gt)**2, dim=0).sqrt()
-            epe_list.append(epe.view(-1).numpy())
-
-        epe_all = np.concatenate(epe_list)
-        epe = np.mean(epe_all)
-        px1 = np.mean(epe_all<1)
-        px3 = np.mean(epe_all<3)
-        px5 = np.mean(epe_all<5)
-
-        print("Validation (%s) EPE: %f, 1px: %f, 3px: %f, 5px: %f" % (dstype, epe, px1, px3, px5))
-        print ('MeanRunTime: ', (sum_time/time_count))
-        results[dstype] = np.mean(epe_list)
-
-    return results
-
-@torch.no_grad()
-def validate_chairs(model):
-    """ Perform evaluation on the FlyingChairs (test) split """
-    model.eval()
-    epe_list = []
-    end_time = time.time()
-    val_dataset = datasets_f2.FlyingChairs(split='validation')
-    time_count = 0
-    sum_time = 0
-    for val_id in range(len(val_dataset)):
-        image1, image2, flow_gt, _ = val_dataset[val_id]
-        image1 = image1[None].cuda()
-        image2 = image2[None].cuda()
-
-        input = torch.cat((image1, image2), 1).to(device)
-        output = model(input)
-
-        target = flow_gt.to(device)
-        _, h, w = target.size()
-
-        flow_pr = F.interpolate(output, (h,w), mode='bilinear', align_corners=False)
-
-        start_time = time.time()
-        # _, flow_pr = model(image1, image2, iters=iters, test_mode=True)
-        sum_time += (time.time()-start_time)
-        time_count += 1
-        print ('MeanRunTime: ', (sum_time/time_count))
-        epe = torch.sum((flow_pr[0].cpu() - flow_gt)**2, dim=0).sqrt()
-        epe_list.append(epe.view(-1).numpy())
-        # print ('EpoTime: ', (time.time()-end_time))
-        end_time = time.time()
-
-    epe = np.mean(np.concatenate(epe_list))
-    print("Validation Chairs EPE: %f" % epe)
-    return {'chairs': epe}
 
 if __name__ == '__main__':
     main()
