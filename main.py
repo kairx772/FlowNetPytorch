@@ -87,7 +87,7 @@ parser.add_argument('--qw', default=None, type=int,
                     help='weight quantization')
 parser.add_argument('--qa', default=None, type=int,
                     help='activation quantization')
-parser.add_argument('--milestones', type=list, default=[100,150,200], metavar='N', nargs='*', help='epochs at which learning rate is divided by 2')
+parser.add_argument('--milestones', type=int, default=[100,150,200], metavar='N', nargs='+', help='epochs at which learning rate is divided by 2')
 
 best_EPE = -1
 n_iter = 0
@@ -97,11 +97,11 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def main():
     global args, best_EPE
     args = parser.parse_args()
-    # print  (args)
-    # print (args.milestones)
-    # print (type(args.milestones))
-    # print (args.milestones[0])
-    # print (args.milestones[1])
+    print  (args)
+    print (args.milestones)
+    print (type(args.milestones))
+    print (type(args.milestones[0]))
+    print (args.milestones[1])
     if not args.savpath:
         save_path = '{},{},{}epochs{},b{},lr{}'.format(
             args.arch,
