@@ -14,7 +14,6 @@ from torchsummary import summary
 import flow_transforms
 import models
 import datasets
-from datasets import datasets_f2
 from multiscaleloss import multiscaleEPE, realEPE
 import datetime
 from tensorboardX import SummaryWriter
@@ -90,11 +89,14 @@ parser.add_argument('--qw', default=None, type=int,
 parser.add_argument('--qa', default=None, type=int,
                     help='activation quantization')
 parser.add_argument('--milestones', default=[100,150,200], metavar='N', nargs='*', help='epochs at which learning rate is divided by 2')
-
+group.add_argument('--device', default=None, type=str,
+                   help='test-val split file')
 best_EPE = -1
 n_iter = 0
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # device = torch.device("cpu")
+
 
 def main():
     global args, best_EPE
@@ -148,7 +150,10 @@ def main():
 
     # create model
     if args.pretrained:
-        network_data = torch.load(args.pretrained)
+        if torch.cuda.is_available():
+            network_data = torch.load(args.pretrained)
+        else:
+            network_data = torch.load(args.pretrained, map_location=torch.device('cpu'))
         # args.arch = network_data['arch']
         print("=> using pre-trained model '{}'".format(args.arch))
     else:
@@ -156,16 +161,23 @@ def main():
         print("=> creating model '{}'".format(args.arch))
 
     if args.qw and args.qa is not None:
-        model = models.__dict__[args.arch](data=network_data, bitW=args.qw, bitA=args.qa).cuda()
+        if torch.cuda.is_available():
+            model = models.__dict__[args.arch](data=network_data, bitW=args.qw, bitA=args.qa).cuda()
+        else:
+            model = models.__dict__[args.arch](data=network_data, bitW=args.qw, bitA=args.qa)
     else:
-        model = models.__dict__[args.arch](data=network_data).cuda()
-    model = torch.nn.DataParallel(model).cuda()
+        if torch.cuda.is_available():
+            model = models.__dict__[args.arch](data=network_data).cuda()
+        else:
+            model = models.__dict__[args.arch](data=network_data)
+    # if torch.cuda.is_available():
+    #     model = torch.nn.DataParallel(model).cuda()
     cudnn.benchmark = True
 
     assert(args.solver in ['adam', 'sgd'])
     print('=> setting {} solver'.format(args.solver))
-    param_groups = [{'params': model.module.bias_parameters(), 'weight_decay': args.bias_decay},
-                    {'params': model.module.weight_parameters(), 'weight_decay': args.weight_decay}]
+    param_groups = [{'params': model.bias_parameters(), 'weight_decay': args.bias_decay},
+                    {'params': model.weight_parameters(), 'weight_decay': args.weight_decay}]
     if args.solver == 'adam':
         optimizer = torch.optim.Adam(param_groups, args.lr,
                                      betas=(args.momentum, args.beta))
@@ -173,8 +185,8 @@ def main():
         optimizer = torch.optim.SGD(param_groups, args.lr,
                                     momentum=args.momentum)
 
-    print (summary(model, (6, 320, 448)))
-    print (model)
+    # print (summary(model, (6, 320, 448)))
+    # print (model)
 
 
 

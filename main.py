@@ -1,6 +1,7 @@
 import argparse
 import os
 import time
+import sys
 
 import torch
 import torch.nn.functional as F
@@ -59,6 +60,8 @@ parser.add_argument('--lr', '--learning-rate', default=0.0001, type=float,
                     metavar='LR', help='initial learning rate')
 parser.add_argument('--momentum', default=0.9, type=float, metavar='M',
                     help='momentum for sgd, alpha parameter for adam')
+parser.add_argument('--gamma', default=0.5, type=float, metavar='M',
+                    help='gamma for optimizer scheduler')
 parser.add_argument('--beta', default=0.999, type=float, metavar='M',
                     help='beta parameter for adam')
 parser.add_argument('--weight-decay', '--wd', default=4e-4, type=float,
@@ -97,11 +100,6 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def main():
     global args, best_EPE
     args = parser.parse_args()
-    print  (args)
-    print (args.milestones)
-    print (type(args.milestones))
-    print (type(args.milestones[0]))
-    print (args.milestones[1])
     if not args.savpath:
         save_path = '{},{},{}epochs{},b{},lr{}'.format(
             args.arch,
@@ -115,22 +113,20 @@ def main():
             save_path = os.path.join(timestamp,save_path)
     else:
         save_path = args.savpath
-        f = open(os.path.join(args.dataset,save_path,'training_parameter.txt'), "w")
-        f.write('{},{},{}epochs{},b{},lr{}\n'.format(
-            args.arch,
-            args.solver,
-            args.epochs,
-            ',epochSize'+str(args.epoch_size) if args.epoch_size > 0 else '',
-            args.batch_size,
-            args.lr)
-            )
-        f.write('-a\t{}\n'.format(args.arch))
-        f.write('{}'.format(args))
-        f.close()
     save_path = os.path.join(args.dataset,save_path)
     print('=> will save everything to {}'.format(save_path))
     if not os.path.exists(save_path):
         os.makedirs(save_path)
+
+    # save training args
+    f = open(os.path.join(save_path,'training_parameter.txt'), "w")
+    vars(args)
+    for key, value in vars(args).items():
+        f.write('{}\t\t{}'.format(key, value))
+        f.write('\n')
+    f.write('\n')
+    f.write('\n{}'.format(' '.join(sys.argv)))
+    f.close()
 
     train_writer = SummaryWriter(os.path.join(save_path,'train'))
     test_writer = SummaryWriter(os.path.join(save_path,'test'))
@@ -218,7 +214,7 @@ def main():
         best_EPE = validate(val_loader, model, 0, output_writers)
         return
 
-    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=args.milestones, gamma=0.5)
+    scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=args.milestones, gamma=args.gamma)
 
     for epoch in range(args.start_epoch, args.epochs):
         scheduler.step()
