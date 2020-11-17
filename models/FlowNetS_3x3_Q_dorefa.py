@@ -1,13 +1,12 @@
 import torch
 import torch.nn as nn
 from torch.nn.init import kaiming_normal_, constant_
-from .util_lsq import conv, predict_flow, deconv, crop_like, conv_Q, predict_flow_Q, deconv_Q
-from .util_lsq import QuantConvTranspose2d as ConvTrans2d_Q
+from .util_q import conv, predict_flow, deconv, crop_like, conv_Q, predict_flow_Q, deconv_Q, ConvTrans2d_Q
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 __all__ = [
-    'flownets33q', 'flownets33q_bn'
+    'flownets33qdorefa', 'flownets33qdorefa_bn'
 ]
 
 
@@ -23,7 +22,7 @@ class FlowNetS33_Q(nn.Module):
         print ('bitA = ' , bitA)
 
         self.batchNorm = batchNorm
-        self.conv1   = conv_Q(self.batchNorm,   6,   64, bitW=bitW, bitA=bitA) # 7x7 origin
+        self.conv1   = conv(self.batchNorm,   6,   64) # 7x7 origin
         self.conv1_1 = conv_Q(self.batchNorm,  64,   64, bitW=bitW, bitA=bitA)
         self.conv1_2 = conv_Q(self.batchNorm,  64,   64, stride=2, bitW=bitW, bitA=bitA)
         self.conv2   = conv_Q(self.batchNorm,  64,  128, bitW=bitW, bitA=bitA) # 5x5 origin
@@ -47,12 +46,12 @@ class FlowNetS33_Q(nn.Module):
         self.predict_flow5 = predict_flow_Q(1026, bitW=bitW)
         self.predict_flow4 = predict_flow_Q(770, bitW=bitW)
         self.predict_flow3 = predict_flow_Q(386, bitW=bitW)
-        self.predict_flow2 = predict_flow_Q(194, bitW=bitW)
+        self.predict_flow2 = predict_flow(194)
 
-        self.upsampled_flow6_to_5 = ConvTrans2d_Q(2, 2, 4, 2, 1, bias=False, bit=bitW)
-        self.upsampled_flow5_to_4 = ConvTrans2d_Q(2, 2, 4, 2, 1, bias=False, bit=bitW)
-        self.upsampled_flow4_to_3 = ConvTrans2d_Q(2, 2, 4, 2, 1, bias=False, bit=bitW)
-        self.upsampled_flow3_to_2 = ConvTrans2d_Q(2, 2, 4, 2, 1, bias=False, bit=bitW)
+        self.upsampled_flow6_to_5 = ConvTrans2d_Q(2, 2, 4, 2, 1, bias=False, bitW=bitW)
+        self.upsampled_flow5_to_4 = ConvTrans2d_Q(2, 2, 4, 2, 1, bias=False, bitW=bitW)
+        self.upsampled_flow4_to_3 = ConvTrans2d_Q(2, 2, 4, 2, 1, bias=False, bitW=bitW)
+        self.upsampled_flow3_to_2 = ConvTrans2d_Q(2, 2, 4, 2, 1, bias=False, bitW=bitW)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
@@ -107,7 +106,7 @@ class FlowNetS33_Q(nn.Module):
         return [param for name, param in self.named_parameters() if 'bias' in name]
 
 
-def flownets33q(data=None, bitW=32, bitA=32):
+def flownets33qdorefa(data=None, bitW=32, bitA=32):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 
@@ -120,7 +119,7 @@ def flownets33q(data=None, bitW=32, bitA=32):
     return model
 
 
-def flownets33q_bn(data=None, bitW=32, bitA=32):
+def flownets33qdorefa_bn(data=None, bitW=32, bitA=32):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 

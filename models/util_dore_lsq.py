@@ -266,7 +266,7 @@ def conv_Q(batchNorm, in_planes, out_planes, kernel_size=3, stride=1, bitW=32, b
         return nn.Sequential(
             Conv2d_Q(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=(kernel_size-1)//2, bias=False, bitW=bitW),
             nn.BatchNorm2d(out_planes),
-            ACT_Q(bitA=bitA)
+            ACT_Q(bit=bitA)
         )
     else:
         return nn.Sequential(

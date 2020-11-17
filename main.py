@@ -79,13 +79,15 @@ parser.add_argument('--pretrained', dest='pretrained', default=None,
                     help='path to pre-trained model')
 parser.add_argument('--no-date', action='store_true',
                     help='don\'t append date timestamp to folder' )
+parser.add_argument('--savpath', default=None, type=str,
+                    help='path save to the folder' )
 parser.add_argument('--div-flow', default=20, type=int,
                     help='value by which flow will be divided. Original value is 20 but 1 with batchNorm gives good results')
 parser.add_argument('--qw', default=None, type=int,
                     help='weight quantization')
 parser.add_argument('--qa', default=None, type=int,
                     help='activation quantization')
-parser.add_argument('--milestones', default=[100,150,200], metavar='N', nargs='*', help='epochs at which learning rate is divided by 2')
+parser.add_argument('--milestones', type=list, default=[100,150,200], metavar='N', nargs='*', help='epochs at which learning rate is divided by 2')
 
 best_EPE = -1
 n_iter = 0
@@ -95,16 +97,36 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def main():
     global args, best_EPE
     args = parser.parse_args()
-    save_path = '{},{},{}epochs{},b{},lr{}'.format(
-        args.arch,
-        args.solver,
-        args.epochs,
-        ',epochSize'+str(args.epoch_size) if args.epoch_size > 0 else '',
-        args.batch_size,
-        args.lr)
-    if not args.no_date:
-        timestamp = datetime.datetime.now().strftime("%m-%d-%H:%M")
-        save_path = os.path.join(timestamp,save_path)
+    # print  (args)
+    # print (args.milestones)
+    # print (type(args.milestones))
+    # print (args.milestones[0])
+    # print (args.milestones[1])
+    if not args.savpath:
+        save_path = '{},{},{}epochs{},b{},lr{}'.format(
+            args.arch,
+            args.solver,
+            args.epochs,
+            ',epochSize'+str(args.epoch_size) if args.epoch_size > 0 else '',
+            args.batch_size,
+            args.lr)
+        if not args.no_date:
+            timestamp = datetime.datetime.now().strftime("%m-%d-%H:%M")
+            save_path = os.path.join(timestamp,save_path)
+    else:
+        save_path = args.savpath
+        f = open(os.path.join(args.dataset,save_path,'training_parameter.txt'), "w")
+        f.write('{},{},{}epochs{},b{},lr{}\n'.format(
+            args.arch,
+            args.solver,
+            args.epochs,
+            ',epochSize'+str(args.epoch_size) if args.epoch_size > 0 else '',
+            args.batch_size,
+            args.lr)
+            )
+        f.write('-a\t{}\n'.format(args.arch))
+        f.write('{}'.format(args))
+        f.close()
     save_path = os.path.join(args.dataset,save_path)
     print('=> will save everything to {}'.format(save_path))
     if not os.path.exists(save_path):
