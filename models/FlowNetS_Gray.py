@@ -6,15 +6,15 @@ from .util_relu import conv, predict_flow, deconv, crop_like
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 __all__ = [
-    'flownets33', 'flownets33_bn'
+    'flownetsgray', 'flownetsgray_bn'
 ]
 
 
-class FlowNetS(nn.Module):
+class FlowNetSGray(nn.Module):
     expansion = 1
 
     def __init__(self,batchNorm=True):
-        super(FlowNetS,self).__init__()
+        super(FlowNetSGray,self).__init__()
 
         self.batchNorm = batchNorm
         self.conv1   = conv(self.batchNorm,   6,   64) # 7x7 origin
@@ -60,6 +60,12 @@ class FlowNetS(nn.Module):
     def forward(self, x):
 
         # x = torch.cat(input_ten,1).to(device)
+        # p = input_ten[:,0:1,:,:]
+        # p.repeat(1,3,1,1)
+        # q = input_ten[:,1,:,:]
+        # q.repeat(1,3,1,1)
+        # x = torch.cat([p,q], 1)
+        x = torch.cat([x[:,:1,:,:].repeat(1,3,1,1),x[:,1:,:,:].repeat(1,3,1,1)],1)
 
         out_conv2 = self.conv2_1(self.conv2(self.conv1_2(self.conv1_1(self.conv1(x)))))
         out_conv3 = self.conv3_1(self.conv3_0(self.conv3(out_conv2)))
@@ -101,27 +107,27 @@ class FlowNetS(nn.Module):
         return [param for name, param in self.named_parameters() if 'bias' in name]
 
 
-def flownets33(data=None):
+def flownetsgray(data=None):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 
     Args:
         data : pretrained weights of the network. will create a new one if not set
     """
-    model = FlowNetS(batchNorm=False)
+    model = FlowNetSGray(batchNorm=False)
     if data is not None:
         model.load_state_dict(data['state_dict'], strict=False)
     return model
 
 
-def flownets33_bn(data=None):
+def flownetsgray_bn(data=None):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 
     Args:
         data : pretrained weights of the network. will create a new one if not set
     """
-    model = FlowNetS(batchNorm=True)
+    model = FlowNetSGray(batchNorm=True)
     if data is not None:
         model.load_state_dict(data['state_dict'], strict=False)
     return model

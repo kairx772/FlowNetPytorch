@@ -74,6 +74,8 @@ parser.add_argument('--multiscale-weights', '-w', default=[0.005,0.01,0.02,0.08,
 parser.add_argument('--sparse', action='store_true',
                     help='look for NaNs in target flow when computing EPE, avoid if flow is garantied to be dense,'
                     'automatically seleted when choosing a KITTIdataset')
+parser.add_argument('--grayscale', action='store_true',
+                    help='convert dataset to grayscale' )
 parser.add_argument('--print-freq', '-p', default=10, type=int,
                     metavar='N', help='print frequency')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
@@ -135,11 +137,23 @@ def main():
         output_writers.append(SummaryWriter(os.path.join(save_path,'test',str(i))))
 
     # Data loading code
-    input_transform = transforms.Compose([
-        flow_transforms.ArrayToTensor(),
-        transforms.Normalize(mean=[0,0,0], std=[255,255,255]),
-        transforms.Normalize(mean=[0.45,0.432,0.411], std=[1,1,1])
-    ])
+    if args.grayscale:
+        print ('Grayscale')
+        input_transform = transforms.Compose([
+            flow_transforms.ArrayToTensor(),
+            transforms.Grayscale(num_output_channels=3),
+            transforms.Normalize(mean=[0,0,0], std=[255,255,255]),
+            transforms.Normalize(mean=[0.431,0.431,0.431], std=[1,1,1]) # 0.431=(0.45+0.432+0.411)/3
+            # transforms.Normalize(mean=[0.5,0.5,0.5], std=[1,1,1])
+        ])
+    else:
+        print ('not Grayscale')
+        input_transform = transforms.Compose([
+            flow_transforms.ArrayToTensor(),
+            transforms.Normalize(mean=[0,0,0], std=[255,255,255]),
+            transforms.Normalize(mean=[0.45,0.432,0.411], std=[1,1,1])
+        ])
+
     target_transform = transforms.Compose([
         flow_transforms.ArrayToTensor(),
         transforms.Normalize(mean=[0,0],std=[args.div_flow,args.div_flow])
@@ -266,7 +280,10 @@ def train(train_loader, model, optimizer, epoch, train_writer):
         input = torch.cat(input,1).to(device)
 
         # compute output
-        output = model(input)
+        if args.grayscale:
+            output = model(torch.cat([input[:,0:1,:,:], input[:,3:4,:,:]],1))
+        else:
+            output = model(input)
         # torch.onnx.export(model.module, input, "pwcent.onnx", opset_version=11, verbose=True)
 
         if args.sparse:
@@ -320,7 +337,10 @@ def validate(val_loader, model, epoch, output_writers):
         
         # compute output
         # start_time = time.time(); runtime_count += 1;
-        output = model(input)
+        if args.grayscale:
+            output = model(torch.cat([input[:,0:1,:,:], input[:,3:4,:,:]],1))
+        else:
+            output = model(input)
         # runtime = (time.time()-start_time); sum_runtime += runtime
         # if runtime_count == 0: 
         #     sum_runtime = 0 

@@ -1,16 +1,6 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
-try:
-    from spatial_correlation_sampler import spatial_correlation_sample
-except ImportError as e:
-    import warnings
-    with warnings.catch_warnings():
-        warnings.filterwarnings("default", category=ImportWarning)
-        warnings.warn("failed to load custom correlation module"
-                      "which is needed for FlowNetC", ImportWarning)
-
-
 def conv(batchNorm, in_planes, out_planes, kernel_size=3, stride=1):
     if batchNorm:
         return nn.Sequential(
