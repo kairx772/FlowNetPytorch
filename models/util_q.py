@@ -6,16 +6,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
-try:
-    from spatial_correlation_sampler import spatial_correlation_sample
-except ImportError as e:
-    import warnings
-    with warnings.catch_warnings():
-        warnings.filterwarnings("default", category=ImportWarning)
-        warnings.warn("failed to load custom correlation module"
-                      "which is needed for FlowNetC", ImportWarning)
-
-
 class quantize(torch.autograd.Function):
     @staticmethod
     def forward(ctx, input, k):
