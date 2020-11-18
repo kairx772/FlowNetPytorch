@@ -7,4 +7,5 @@ from .FlowNetS_3x3 import *
 from .FlowNetS_3x3_Q import *
 from .FlowNetS_3x3_Q_dorefa import *
 from .FlowNetS_Gray import *
+from .FlowNetS_Gray_half import *
 from .SpyNet import *
