@@ -138,7 +138,6 @@ def main():
 
     # Data loading code
     if args.grayscale:
-        print ('Grayscale')
         input_transform = transforms.Compose([
             flow_transforms.ArrayToTensor(),
             transforms.Grayscale(num_output_channels=3),
@@ -147,7 +146,6 @@ def main():
             # transforms.Normalize(mean=[0.5,0.5,0.5], std=[1,1,1])
         ])
     else:
-        print ('not Grayscale')
         input_transform = transforms.Compose([
             flow_transforms.ArrayToTensor(),
             transforms.Normalize(mean=[0,0,0], std=[255,255,255]),
