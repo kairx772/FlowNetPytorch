@@ -16,7 +16,7 @@ import datasets
 from multiscaleloss import multiscaleEPE, realEPE
 import datetime
 from tensorboardX import SummaryWriter
-from util import flow2rgb, AverageMeter, save_checkpoint
+from util import flow2rgb, AverageMeter, save_checkpoint, save_training_args, exportpars, exportsummary
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -85,7 +85,9 @@ parser.add_argument('--pretrained', dest='pretrained', default=None,
 parser.add_argument('--no-date', action='store_true',
                     help='don\'t append date timestamp to folder' )
 parser.add_argument('--savpath', default=None, type=str,
-                    help='path save to the folder' )
+                    help='folder path name' )
+parser.add_argument('--print-model', action='store_true',
+                    help='print model parameters' )
 parser.add_argument('--div-flow', default=20, type=int,
                     help='value by which flow will be divided. Original value is 20 but 1 with batchNorm gives good results')
 parser.add_argument('--qw', default=None, type=int,
@@ -121,14 +123,16 @@ def main():
         os.makedirs(save_path)
 
     # save training args
-    f = open(os.path.join(save_path,'training_parameter.txt'), "w")
-    vars(args)
-    for key, value in vars(args).items():
-        f.write('{}\t\t{}'.format(key, value))
-        f.write('\n')
-    f.write('\n')
-    f.write('\n{}'.format(' '.join(sys.argv)))
-    f.close()
+    save_training_args(save_path, args)
+
+    # f = open(os.path.join(save_path,'training_parameter.txt'), "w")
+    # vars(args)
+    # for key, value in vars(args).items():
+    #     f.write('{}\t\t{}'.format(key, value))
+    #     f.write('\n')
+    # f.write('\n')
+    # f.write('\n{}'.format(' '.join(sys.argv)))
+    # f.close()
 
     train_writer = SummaryWriter(os.path.join(save_path,'train'))
     test_writer = SummaryWriter(os.path.join(save_path,'test'))
@@ -221,6 +225,10 @@ def main():
     elif args.solver == 'adamw':
         optimizer = torch.optim.Adam(param_groups, args.lr,
                                     betas=(args.momentum, args.beta))
+    if args.print_model:
+        exportpars(model, save_path, args)
+        exportsummary(model, save_path, args)
+        return
 
     if args.evaluate:
         best_EPE = validate(val_loader, model, 0, output_writers)

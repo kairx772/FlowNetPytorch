@@ -3,6 +3,8 @@ import numpy as np
 import shutil
 import torch
 import torch.nn.functional as F
+import sys
+from torchsummary import summary
 
 
 def save_checkpoint(state, is_best, save_path, filename='checkpoint.pth.tar'):
@@ -66,3 +68,27 @@ class InputPadder:
         ht, wd = x.shape[-2:]
         c = [self._pad[2], ht-self._pad[3], self._pad[0], wd-self._pad[1]]
         return x[..., c[0]:c[1], c[2]:c[3]]
+
+def save_training_args(save_path, args):
+    f = open(os.path.join(save_path,'training_parameter.txt'), "w")
+    vars(args)
+    for key, value in vars(args).items():
+        f.write('{}\t\t{}'.format(key, value))
+        f.write('\n')
+    f.write('\n')
+    f.write('\n{}'.format(' '.join(sys.argv)))
+    f.close()
+
+def exportpars(model, save_path, args):
+    f = open(os.path.join(save_path,'{}_pars.txt'.format(args.arch)), "w")
+    n = 0
+    for key, val in model.module.state_dict().items():
+        f.write ('{}, {}\t'.format(n, key))
+        f.write ('{}\n'.format(val.size()))
+        n+=1
+    f.close()
+
+def exportsummary(model, save_path, args):
+    f = open(os.path.join(save_path,'{}_summary.txt'.format(args.arch)), "w")
+    f.write ('{}\n'.format(summary(model.module, (6, 320, 448))))
+    f.close()
