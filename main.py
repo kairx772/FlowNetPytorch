@@ -17,6 +17,7 @@ from multiscaleloss import multiscaleEPE, realEPE
 import datetime
 from tensorboardX import SummaryWriter
 from util import flow2rgb, AverageMeter, save_checkpoint, save_training_args, exportpars, exportsummary
+import numpy as np
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -94,6 +95,8 @@ parser.add_argument('--qw', default=None, type=int,
                     help='weight quantization')
 parser.add_argument('--qa', default=None, type=int,
                     help='activation quantization')
+parser.add_argument('--alphabit', default=None, type=int,
+                    help='alph_abit for LLSQ quantization')
 parser.add_argument('--milestones', type=int, default=[100,150,200], metavar='N', nargs='+', help='epochs at which learning rate is divided by 2')
 
 best_EPE = -1
@@ -225,10 +228,12 @@ def main():
     elif args.solver == 'adamw':
         optimizer = torch.optim.Adam(param_groups, args.lr,
                                     betas=(args.momentum, args.beta))
+    
     if args.print_model:
         exportpars(model, save_path, args)
         exportsummary(model, save_path, args)
-        return
+        if args.savpath == 'test':
+            return
 
     if args.evaluate:
         best_EPE = validate(val_loader, model, 0, output_writers)

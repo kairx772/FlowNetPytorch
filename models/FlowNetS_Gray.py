@@ -17,7 +17,7 @@ class FlowNetSGray(nn.Module):
         super(FlowNetSGray,self).__init__()
 
         self.batchNorm = batchNorm
-        self.conv1   = conv(self.batchNorm,   6,   64) # 7x7 origin
+        self.conv1   = conv(self.batchNorm,   2,   64) # 7x7 origin
         self.conv1_1 = conv(self.batchNorm,  64,   64)
         self.conv1_2 = conv(self.batchNorm,  64,   64, stride=2)
         self.conv2   = conv(self.batchNorm,  64,  128) # 5x5 origin
@@ -65,7 +65,7 @@ class FlowNetSGray(nn.Module):
         # q = input_ten[:,1,:,:]
         # q.repeat(1,3,1,1)
         # x = torch.cat([p,q], 1)
-        x = torch.cat([x[:,:1,:,:].repeat(1,3,1,1),x[:,1:,:,:].repeat(1,3,1,1)],1)
+        # x = torch.cat([x[:,:1,:,:].repeat(1,3,1,1),x[:,1:,:,:].repeat(1,3,1,1)],1)
 
         out_conv2 = self.conv2_1(self.conv2(self.conv1_2(self.conv1_1(self.conv1(x)))))
         out_conv3 = self.conv3_1(self.conv3_0(self.conv3(out_conv2)))

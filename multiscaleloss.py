@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as F
+import numpy as np
 
 
 def EPE(input_flow, target_flow, sparse=False, mean=True):
@@ -57,7 +58,6 @@ def multiscaleEPE(network_output, target_flow, weights=None, sparse=False):
     # print (type(network_output))
     # print (len(network_output))
     # print (type(network_output[0]))
-    # print (network_output[0])
     assert(len(weights) == len(network_output))
 
     loss = 0

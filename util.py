@@ -90,5 +90,8 @@ def exportpars(model, save_path, args):
 
 def exportsummary(model, save_path, args):
     f = open(os.path.join(save_path,'{}_summary.txt'.format(args.arch)), "w")
-    f.write ('{}\n'.format(summary(model.module, (6, 320, 448))))
+    if args.grayscale:
+        f.write ('{}\n'.format(summary(model.module, (2, 320, 448))))
+    else:
+        f.write ('{}\n'.format(summary(model.module, (6, 320, 448))))
     f.close()
