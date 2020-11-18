@@ -59,8 +59,6 @@ class FlowNetS(nn.Module):
 
     def forward(self, x):
 
-        # x = torch.cat(input_ten,1).to(device)
-
         out_conv2 = self.conv2_1(self.conv2(self.conv1_2(self.conv1_1(self.conv1(x)))))
         out_conv3 = self.conv3_1(self.conv3_0(self.conv3(out_conv2)))
         out_conv4 = self.conv4_1(self.conv4(out_conv3))
