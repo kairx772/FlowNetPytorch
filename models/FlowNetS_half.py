@@ -14,7 +14,7 @@ class FlowNetShalf(nn.Module):
     expansion = 1
 
     def __init__(self,batchNorm=True):
-        super(FlowNetSGray,self).__init__()
+        super(FlowNetShalf,self).__init__()
 
         ratio = 2
         C01_OUT = 64//ratio
