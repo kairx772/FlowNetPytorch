@@ -10,3 +10,4 @@ from .FlowNetS_Gray import *
 from .FlowNetS_Gray_half import *
 from .FlowNetS_half import *
 from .SpyNet import *
+from .KNet import *
