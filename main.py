@@ -77,6 +77,8 @@ parser.add_argument('--sparse', action='store_true',
                     'automatically seleted when choosing a KITTIdataset')
 parser.add_argument('--grayscale', action='store_true',
                     help='convert dataset to grayscale' )
+parser.add_argument('--graymodel', action='store_true',
+                    help='use gray scale model' )
 parser.add_argument('--print-freq', '-p', default=10, type=int,
                     metavar='N', help='print frequency')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
@@ -291,7 +293,7 @@ def train(train_loader, model, optimizer, epoch, train_writer):
         input = torch.cat(input,1).to(device)
 
         # compute output
-        if args.grayscale:
+        if args.graymodel:
             output = model(torch.cat([input[:,0:1,:,:], input[:,3:4,:,:]],1))
         else:
             output = model(input)
@@ -348,7 +350,7 @@ def validate(val_loader, model, epoch, output_writers):
         
         # compute output
         # start_time = time.time(); runtime_count += 1;
-        if args.grayscale:
+        if args.graymodel:
             output = model(torch.cat([input[:,0:1,:,:], input[:,3:4,:,:]],1))
         else:
             output = model(input)
