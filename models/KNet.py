@@ -84,25 +84,25 @@ class KNet(nn.Module):
         self.enco1_4 = conv(self.batchNorm, EC13_OUT, EC14_OUT)
         self.enco1_5 = conv(self.batchNorm, EC14_OUT, EC15_OUT)
 
-        self.enco2_1 = conv(self.batchNorm, C22_OUT*2+C12_OUT*2+2 EC21_OUT) # c12,c22,p12,p22,flow3_up
+        self.enco2_1 = conv(self.batchNorm, C22_OUT*2+C12_OUT*2+2, EC21_OUT) # c12,c22,p12,p22,flow3_up
         self.enco2_2 = conv(self.batchNorm, EC21_OUT, EC22_OUT)
         self.enco2_3 = conv(self.batchNorm, EC22_OUT, EC23_OUT)        
         self.enco2_4 = conv(self.batchNorm, EC23_OUT, EC24_OUT)
         self.enco2_5 = conv(self.batchNorm, EC24_OUT, EC25_OUT)
 
-        self.enco3_1 = conv(self.batchNorm, C32_OUT*2+C32_OUT*2+2 EC31_OUT) # c13,c23,p13,p23,flow4_up
+        self.enco3_1 = conv(self.batchNorm, C32_OUT*2+C32_OUT*2+2, EC31_OUT) # c13,c23,p13,p23,flow4_up
         self.enco3_2 = conv(self.batchNorm, EC31_OUT, EC32_OUT)
         self.enco3_3 = conv(self.batchNorm, EC32_OUT, EC33_OUT)
         self.enco3_4 = conv(self.batchNorm, EC33_OUT, EC34_OUT)
         self.enco3_5 = conv(self.batchNorm, EC34_OUT, EC35_OUT)
 
-        self.enco4_1 = conv(self.batchNorm, C42_OUT*2+C42_OUT*2+2 EC41_OUT) # c14,c24,p14,p24,flow5_up
+        self.enco4_1 = conv(self.batchNorm, C42_OUT*2+C42_OUT*2+2, EC41_OUT) # c14,c24,p14,p24,flow5_up
         self.enco4_2 = conv(self.batchNorm, EC41_OUT, EC42_OUT)
         self.enco4_3 = conv(self.batchNorm, EC42_OUT, EC43_OUT)
         self.enco4_4 = conv(self.batchNorm, EC43_OUT, EC44_OUT)
         self.enco4_5 = conv(self.batchNorm, EC44_OUT, EC45_OUT)
 
-        self.enco5_1 = conv(self.batchNorm, C42_OUT*2+2 EC31_OUT) # p15,p25
+        self.enco5_1 = conv(self.batchNorm, C42_OUT*2+2, EC31_OUT) # p15,p25
         self.enco5_2 = conv(self.batchNorm, EC51_OUT, EC52_OUT)
         self.enco5_3 = conv(self.batchNorm, EC52_OUT, EC53_OUT)
         self.enco5_4 = conv(self.batchNorm, EC53_OUT, EC54_OUT)
@@ -198,7 +198,7 @@ class KNet(nn.Module):
         return [param for name, param in self.named_parameters() if 'bias' in name]
 
 
-def flownetsgrayhalf(data=None):
+def knet(data=None):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 
@@ -211,7 +211,7 @@ def flownetsgrayhalf(data=None):
     return model
 
 
-def flownetsgrayhalf_bn(data=None):
+def knet_bn(data=None):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 

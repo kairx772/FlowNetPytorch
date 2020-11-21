@@ -16,7 +16,7 @@ class FlowNetSGray(nn.Module):
     def __init__(self,batchNorm=True):
         super(FlowNetSGray,self).__init__()
 
-        ratio = 8
+        ratio = 2
         C01_OUT = 64//ratio
         C11_OUT = 64//ratio
         C12_OUT = 64//ratio
