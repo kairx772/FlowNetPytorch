@@ -69,9 +69,9 @@ parser.add_argument('--weight-decay', '--wd', default=4e-4, type=float,
                     metavar='W', help='weight decay')
 parser.add_argument('--bias-decay', default=0, type=float,
                     metavar='B', help='bias decay')
-parser.add_argument('--multiscale-weights', '-w', default=[0.005,0.01,0.02,0.08,0.32], type=float, nargs=5,
+parser.add_argument('--multiscale-weights', '-w', default=[0.32,0.08,0.001,0.001,0.001], type=float, nargs=5,
                     help='training weight for each scale, from highest resolution (flow2) to lowest (flow6)',
-                    metavar=('W2', 'W3', 'W4', 'W5', 'W6'))
+                    metavar=('W2', 'W3', 'W4', 'W5', 'W6')) # 0.005,0.01,0.02,0.08,0.32
 parser.add_argument('--sparse', action='store_true',
                     help='look for NaNs in target flow when computing EPE, avoid if flow is garantied to be dense,'
                     'automatically seleted when choosing a KITTIdataset')

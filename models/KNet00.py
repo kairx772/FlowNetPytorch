@@ -6,7 +6,7 @@ from .util_relu import conv, predict_flow, deconv, crop_like
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 __all__ = [
-    'knet', 'knet_bn'
+    'knet00', 'knet00_bn'
 ]
 
 
@@ -16,16 +16,16 @@ class KNet(nn.Module):
     def __init__(self,batchNorm=True):
         super(KNet,self).__init__()
 
-        C11_OUT = 8
-        C12_OUT = 8
-        C21_OUT = 16
-        C22_OUT = 16
-        C31_OUT = 32
-        C32_OUT = 32
-        C41_OUT = 64
-        C42_OUT = 64
-        C51_OUT = 128
-        C52_OUT = 128
+        C11_OUT = 4
+        C12_OUT = 4
+        C21_OUT = 8
+        C22_OUT = 8
+        C31_OUT = 8
+        C32_OUT = 8
+        C41_OUT = 16
+        C42_OUT = 16
+        C51_OUT = 32
+        C52_OUT = 32
 
         ecchnum1 = 32
         ecchnum2 = 64
@@ -212,7 +212,7 @@ class KNet(nn.Module):
         return [param for name, param in self.named_parameters() if 'bias' in name]
 
 
-def knet(data=None):
+def knet00(data=None):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 
@@ -225,7 +225,7 @@ def knet(data=None):
     return model
 
 
-def knet_bn(data=None):
+def knet00_bn(data=None):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 
