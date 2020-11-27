@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn.init import kaiming_normal_, constant_
-from .util_lsq import conv, predict_flow, deconv, crop_like, conv_Q, predict_flow_Q, deconv_Q
+from .util_lsq import conv, predict_flow, deconv, crop_like, conv_Q, predict_flow_Q, deconv_Q, ACT_Q
 from .util_lsq import QuantConvTranspose2d as ConvTrans2d_Q
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -103,10 +103,11 @@ class FlowNetS33_Q(nn.Module):
 
     def bias_parameters(self):
         return [param for name, param in self.named_parameters() if 'bias' in name]
-    def assign_alphabit(self):
+    
+    def assign_alphabit(self, alphabit):
         for m in self.modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
-                print ('m: ', m)
+            if isinstance(m, ACT_Q):
+                m.alpha_bit = alphabit
         return
 
 
