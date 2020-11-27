@@ -45,7 +45,7 @@ parser.add_argument('--arch', '-a', metavar='ARCH', default='flownets',
                     choices=model_names,
                     help='model architecture, overwritten if pretrained is specified: ' +
                     ' | '.join(model_names))
-parser.add_argument('--solver', default='adam',choices=['adam','sgd', 'adamw'],
+parser.add_argument('--solver', default='adamw',choices=['adam','sgd', 'adamw'],
                     help='solver algorithms')
 parser.add_argument('-j', '--workers', default=8, type=int, metavar='N',
                     help='number of data loading workers')
