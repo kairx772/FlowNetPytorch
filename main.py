@@ -2,7 +2,7 @@ import argparse
 import os
 import time
 import sys
-
+import json
 import torch
 import torch.nn.functional as F
 import torch.nn.parallel
@@ -19,8 +19,8 @@ from tensorboardX import SummaryWriter
 from util import flow2rgb, AverageMeter, save_checkpoint, save_training_args, exportpars, exportsummary
 import numpy as np
 
-import warnings
-warnings.filterwarnings("ignore")
+# import warnings
+# warnings.filterwarnings("ignore")
 
 
 model_names = sorted(name for name in models.__dict__
@@ -29,7 +29,7 @@ dataset_names = sorted(name for name in datasets.__all__)
 
 parser = argparse.ArgumentParser(description='PyTorch FlowNet Training on several datasets',
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('data', metavar='DIR',
+parser.add_argument('--data', metavar='DIR', 
                     help='path to dataset')
 parser.add_argument('--dataset', metavar='DATASET', default='flying_chairs',
                     choices=dataset_names,
@@ -109,6 +109,14 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def main():
     global args, best_EPE
     args = parser.parse_args()
+    
+    if not args.data:
+        f = open('data_loc.json', 'r')
+        content = f.read()
+        f.close()
+        data_loc = json.loads(content)
+        args.data = data_loc[args.dataset]
+    
     if not args.savpath:
         save_path = '{},{},{}epochs{},b{},lr{}'.format(
             args.arch,
@@ -129,15 +137,6 @@ def main():
 
     # save training args
     save_training_args(save_path, args)
-
-    # f = open(os.path.join(save_path,'training_parameter.txt'), "w")
-    # vars(args)
-    # for key, value in vars(args).items():
-    #     f.write('{}\t\t{}'.format(key, value))
-    #     f.write('\n')
-    # f.write('\n')
-    # f.write('\n{}'.format(' '.join(sys.argv)))
-    # f.close()
 
     train_writer = SummaryWriter(os.path.join(save_path,'train'))
     test_writer = SummaryWriter(os.path.join(save_path,'test'))
@@ -176,11 +175,11 @@ def main():
         ])
     else:
         co_transform = flow_transforms.Compose([
-            flow_transforms.RandomTranslate(10),
-            flow_transforms.RandomRotate(10,5),
-            flow_transforms.RandomCrop((320,448)),
-            flow_transforms.RandomVerticalFlip(),
-            flow_transforms.RandomHorizontalFlip()
+            #flow_transforms.RandomTranslate(10),
+            #flow_transforms.RandomRotate(10,5),
+            # flow_transforms.RandomCrop((320,448)),
+            #flow_transforms.RandomVerticalFlip(),
+            #flow_transforms.RandomHorizontalFlip()
         ])
 
     print("=> fetching img pairs in '{}'".format(args.data))
@@ -297,7 +296,9 @@ def train(train_loader, model, optimizer, epoch, train_writer):
             output = model(torch.cat([input[:,0:1,:,:], input[:,3:4,:,:]],1))
         else:
             output = model(input)
-        # torch.onnx.export(model.module, input, "pwcent.onnx", opset_version=11, verbose=True)
+            # print ('input : ', input[0].shape)
+            # print ('output: ', output[0].shape)
+        # torch.onnx.export(model.module, torch.cat([input[:,0:1,:,:], input[:,3:4,:,:]],1), "model.onnx", opset_version=11, verbose=True)
 
         if args.sparse:
             # Since Target pooling is not very precise when sparse,
