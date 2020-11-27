@@ -8,3 +8,5 @@ KITTI_occ/
 mpi_sintel_clean/
 mpi_sintel_final/
 data_datasets
+model.onnx
+training_script.sh
