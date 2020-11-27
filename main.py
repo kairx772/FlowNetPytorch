@@ -214,7 +214,7 @@ def main():
     else:
         model = models.__dict__[args.arch](data=network_data).cuda()
     if args.alphabit is not None:
-        model.module.assign_alphabit()
+        model.assign_alphabit()
     
     model = torch.nn.DataParallel(model).cuda()
     cudnn.benchmark = True

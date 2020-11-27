@@ -103,6 +103,11 @@ class FlowNetS33_Q(nn.Module):
 
     def bias_parameters(self):
         return [param for name, param in self.named_parameters() if 'bias' in name]
+    def assign_alphabit(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
+                print ('m: ', m)
+        return
 
 
 def flownets33q(data=None, bitW=32, bitA=32):
