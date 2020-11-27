@@ -98,7 +98,7 @@ parser.add_argument('--qw', default=None, type=int,
 parser.add_argument('--qa', default=None, type=int,
                     help='activation quantization')
 parser.add_argument('--alphabit', default=None, type=int,
-                    help='alph_abit for LLSQ quantization')
+                    help='alpha_bit for LLSQ quantization')
 parser.add_argument('--milestones', type=int, default=[100,150,200], metavar='N', nargs='+', help='epochs at which learning rate is divided by 2')
 
 best_EPE = -1
@@ -213,6 +213,9 @@ def main():
         model = models.__dict__[args.arch](data=network_data, bitW=args.qw, bitA=args.qa).cuda()
     else:
         model = models.__dict__[args.arch](data=network_data).cuda()
+    if args.alphabit is not None:
+        model.module.assign_alphabit()
+    
     model = torch.nn.DataParallel(model).cuda()
     cudnn.benchmark = True
 
@@ -243,14 +246,13 @@ def main():
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=args.milestones, gamma=args.gamma)
 
     for epoch in range(args.start_epoch, args.epochs):
-        scheduler.step()
 
         # train for one epoch
         train_loss, train_EPE = train(train_loader, model, optimizer, epoch, train_writer)
         train_writer.add_scalar('mean EPE', train_EPE, epoch)
+        scheduler.step()
 
         # evaluate on validation set
-
         with torch.no_grad():
             EPE = validate(val_loader, model, epoch, output_writers)
         test_writer.add_scalar('mean EPE', EPE, epoch)
