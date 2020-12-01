@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.nn.init import kaiming_normal_, constant_
-from .util_lsq import conv, predict_flow, deconv, crop_like, conv_Q, predict_flow_Q, deconv_Q, ACT_Q
+from .util_lsq import conv, predict_flow, deconv, crop_like, conv_Q, predict_flow_Q, deconv_Q, ACT_Q, QuantConv2d
 from .util_lsq import QuantConvTranspose2d as ConvTrans2d_Q
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -132,6 +132,12 @@ class FlowNetSGrayHalfLLSQ(nn.Module):
         for m in self.modules():
             if isinstance(m, ACT_Q):
                 m.alpha_bit = alphabit
+        return
+    def set_bias_flase(self):
+        for m in self.modules():
+            if isinstance(m, QuantConv2d) or (isinstance(m, nn.Conv2d)):
+                m.bias = None
+                print ('m', m.bias)
         return
 
 def fnsghllsq(data=None, bitW=32, bitA=32, cut_ratio=2):

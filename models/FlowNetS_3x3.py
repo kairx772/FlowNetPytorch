@@ -97,7 +97,12 @@ class FlowNetS(nn.Module):
 
     def bias_parameters(self):
         return [param for name, param in self.named_parameters() if 'bias' in name]
-
+    def set_bias_flase(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                m.bias = None
+                print ('m', m.bias)
+        return
 
 def flownets33(data=None):
     """FlowNetS model architecture from the

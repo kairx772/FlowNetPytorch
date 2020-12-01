@@ -350,7 +350,7 @@ def predict_flow(in_planes):
     return nn.Conv2d(in_planes,2,kernel_size=3,stride=1,padding=1,bias=False)
 
 def predict_flow_Q(in_planes, bitW=32):
-    return QuantConv2d(in_planes, 2, kernel_size=3, stride=1, padding=1, bias=True, bit=bitW)
+    return QuantConv2d(in_planes, 2, kernel_size=3, stride=1, padding=1, bias=False, bit=bitW)
 
 
 def deconv(in_planes, out_planes):
@@ -361,7 +361,7 @@ def deconv(in_planes, out_planes):
 
 def deconv_Q(in_planes, out_planes, bitW=32, bitA=32):
     return nn.Sequential(
-        QuantConvTranspose2d(in_planes, out_planes, kernel_size=4, stride=2, padding=1, bias=False, bit=bitA),
+        QuantConvTranspose2d(in_planes, out_planes, kernel_size=4, stride=2, padding=1, bias=False, bit=bitW),
         nn.ReLU(),
         ACT_Q(bit=bitA)
     )
