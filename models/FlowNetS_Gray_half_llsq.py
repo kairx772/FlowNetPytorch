@@ -133,12 +133,6 @@ class FlowNetSGrayHalfLLSQ(nn.Module):
             if isinstance(m, ACT_Q):
                 m.alpha_bit = alphabit
         return
-    def set_bias_flase(self):
-        for m in self.modules():
-            if isinstance(m, QuantConv2d) or (isinstance(m, nn.Conv2d)):
-                m.bias = None
-                print ('m', m.bias)
-        return
 
 def fnsghllsq(data=None, bitW=32, bitA=32, cut_ratio=2):
     """FlowNetS model architecture from the
