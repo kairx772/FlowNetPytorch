@@ -11,3 +11,4 @@ from .FlowNetS_Gray_half import *
 from .FlowNetS_half import *
 from .SpyNet import *
 from .KNet import *
+from .FlowNetS_Gray_half_llsq import *

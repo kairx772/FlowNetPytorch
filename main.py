@@ -97,6 +97,8 @@ parser.add_argument('--qw', default=None, type=int,
                     help='weight quantization')
 parser.add_argument('--qa', default=None, type=int,
                     help='activation quantization')
+parser.add_argument('--cut-ratio', default=None, type=int,
+                    help='divide FlowNet channels number by a ratio')
 parser.add_argument('--alphabit', default=None, type=int,
                     help='alpha_bit for LLSQ quantization')
 parser.add_argument('--milestones', type=int, default=[100,150,200], metavar='N', nargs='+', help='epochs at which learning rate is divided by 2')
@@ -209,10 +211,13 @@ def main():
         network_data = None
         print("=> creating model '{}'".format(args.arch))
 
-    if args.qw and args.qa is not None:
+    if (args.qw and args.qa and args.cut_ratio) is not None:
+        model = models.__dict__[args.arch](data=network_data, bitW=args.qw, bitA=args.qa, cut_ratio=args.cut_ratio).cuda()
+    elif (args.qw and args.qa) is not None:
         model = models.__dict__[args.arch](data=network_data, bitW=args.qw, bitA=args.qa).cuda()
     else:
         model = models.__dict__[args.arch](data=network_data).cuda()
+    
     if args.alphabit is not None:
         model.assign_alphabit(args.alphabit)
     
