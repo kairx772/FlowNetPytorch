@@ -15,7 +15,7 @@ import models
 import datasets
 from multiscaleloss import multiscaleEPE, realEPE
 import datetime
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 from util import flow2rgb, AverageMeter, save_checkpoint, save_training_args, exportpars, exportsummary
 import numpy as np
 
@@ -211,23 +211,30 @@ def main():
         network_data = None
         print("=> creating model '{}'".format(args.arch))
 
-    if (args.qw and args.qa and args.cut_ratio) is not None:
-        model = models.__dict__[args.arch](data=network_data, bitW=args.qw, bitA=args.qa, cut_ratio=args.cut_ratio).cuda()
-    elif (args.qw and args.qa) is not None:
-        model = models.__dict__[args.arch](data=network_data, bitW=args.qw, bitA=args.qa).cuda()
-    else:
-        model = models.__dict__[args.arch](data=network_data).cuda()
+    # if (args.qw and args.qa and args.cut_ratio) is not None:
+    #     model = models.__dict__[args.arch](data=network_data, bitW=args.qw, bitA=args.qa, cut_ratio=args.cut_ratio).cuda()
+    # elif (args.qw and args.qa) is not None:
+    #     model = models.__dict__[args.arch](data=network_data, bitW=args.qw, bitA=args.qa).cuda()
+    # else:
+    #     model = models.__dict__[args.arch](data=network_data).cuda()
+
+    model = models.__dict__[args.arch](data=network_data, args=args).to(device)
     
     if args.alphabit is not None:
         model.assign_alphabit(args.alphabit)
 
-    model = torch.nn.DataParallel(model).cuda()
-    cudnn.benchmark = True
+    # model = torch.nn.DataParallel(model).cuda()
+    # cudnn.benchmark = True
 
     assert(args.solver in ['adam', 'sgd', 'adamw'])
     print('=> setting {} solver'.format(args.solver))
-    param_groups = [{'params': model.module.bias_parameters(), 'weight_decay': args.bias_decay},
-                    {'params': model.module.weight_parameters(), 'weight_decay': args.weight_decay}]
+    param_groups = [{'params': model.bias_parameters(), 'weight_decay': args.bias_decay},
+                    {'params': model.weight_parameters(), 'weight_decay': args.weight_decay}]
+
+    if device.type == "cuda":
+        model = torch.nn.DataParallel(model).cuda()
+        cudnn.benchmark = True
+
     if args.solver == 'adam':
         optimizer = torch.optim.Adam(param_groups, args.lr,
                                      betas=(args.momentum, args.beta))
@@ -235,7 +242,7 @@ def main():
         optimizer = torch.optim.SGD(param_groups, args.lr,
                                     momentum=args.momentum)
     elif args.solver == 'adamw':
-        optimizer = torch.optim.Adam(param_groups, args.lr,
+        optimizer = torch.optim.AdamW(param_groups, args.lr,
                                     betas=(args.momentum, args.beta))
     
     if args.print_model:

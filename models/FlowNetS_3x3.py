@@ -98,7 +98,7 @@ class FlowNetS(nn.Module):
     def bias_parameters(self):
         return [param for name, param in self.named_parameters() if 'bias' in name]
 
-def flownets33(data=None):
+def flownets33(data=None, args=None):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 
