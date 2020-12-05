@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
-def conv(batchNorm, in_planes, out_planes, kernel_size=3, stride=1):
+def conv(batchNorm, in_planes, out_planes, kernel_size=3, stride=1, bias=True):
     if batchNorm:
         return nn.Sequential(
             nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=(kernel_size-1)//2, bias=False),
@@ -10,7 +10,7 @@ def conv(batchNorm, in_planes, out_planes, kernel_size=3, stride=1):
         )
     else:
         return nn.Sequential(
-            nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=(kernel_size-1)//2, bias=True),
+            nn.Conv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=(kernel_size-1)//2, bias=bias),
             nn.ReLU()
         )
 

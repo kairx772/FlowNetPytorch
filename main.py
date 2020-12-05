@@ -101,6 +101,8 @@ parser.add_argument('--cut-ratio', default=None, type=int,
                     help='divide FlowNet channels number by a ratio')
 parser.add_argument('--alphabit', default=None, type=int,
                     help='alpha_bit for LLSQ quantization')
+parser.add_argument('--conv-no-bias', action='store_false',
+                    help='print model parameters' )
 parser.add_argument('--milestones', type=int, default=[100,150,200], metavar='N', nargs='+', help='epochs at which learning rate is divided by 2')
 
 best_EPE = -1
