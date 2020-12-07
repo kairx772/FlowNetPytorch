@@ -13,10 +13,10 @@ __all__ = [
 class FlowNetShalf(nn.Module):
     expansion = 1
 
-    def __init__(self,batchNorm=True):
+    def __init__(self,batchNorm=True, bias=True, cut_ratio=2):
         super(FlowNetShalf,self).__init__()
 
-        ratio = 2
+        ratio = cut_ratio
         C01_OUT = 64//ratio
         C11_OUT = 64//ratio
         C12_OUT = 64//ratio
@@ -38,20 +38,20 @@ class FlowNetShalf(nn.Module):
         DC2_OUT = 64//ratio
 
         self.batchNorm = batchNorm
-        self.conv1   = conv(self.batchNorm,   6,   C01_OUT) # 7x7 origin
-        self.conv1_1 = conv(self.batchNorm,  C01_OUT,   C11_OUT)
-        self.conv1_2 = conv(self.batchNorm,  C11_OUT,   C12_OUT, stride=2)
-        self.conv2   = conv(self.batchNorm,  C12_OUT,  C2__OUT) # 5x5 origin
-        self.conv2_1 = conv(self.batchNorm, C2__OUT,  C21_OUT, stride=2)
-        self.conv3   = conv(self.batchNorm, C21_OUT,  C3__OUT) # 5x5 origin
-        self.conv3_0 = conv(self.batchNorm, C3__OUT,  C30_OUT, stride=2)
-        self.conv3_1 = conv(self.batchNorm, C30_OUT,  C31_OUT)
-        self.conv4   = conv(self.batchNorm, C31_OUT,  C4__OUT, stride=2)
-        self.conv4_1 = conv(self.batchNorm, C4__OUT,  C41_OUT)
-        self.conv5   = conv(self.batchNorm, C41_OUT,  C5__OUT, stride=2)
-        self.conv5_1 = conv(self.batchNorm, C5__OUT,  C51_OUT)
-        self.conv6   = conv(self.batchNorm, C51_OUT, C6__OUT, stride=2)
-        self.conv6_1 = conv(self.batchNorm,C6__OUT, C61_OUT)
+        self.conv1   = conv(self.batchNorm,       6, C01_OUT, bias=bias) # 7x7 origin
+        self.conv1_1 = conv(self.batchNorm, C01_OUT, C11_OUT, bias=bias)
+        self.conv1_2 = conv(self.batchNorm, C11_OUT, C12_OUT, bias=bias, stride=2)
+        self.conv2   = conv(self.batchNorm, C12_OUT, C2__OUT, bias=bias) # 5x5 origin
+        self.conv2_1 = conv(self.batchNorm, C2__OUT, C21_OUT, bias=bias, stride=2)
+        self.conv3   = conv(self.batchNorm, C21_OUT, C3__OUT, bias=bias) # 5x5 origin
+        self.conv3_0 = conv(self.batchNorm, C3__OUT, C30_OUT, bias=bias, stride=2)
+        self.conv3_1 = conv(self.batchNorm, C30_OUT, C31_OUT, bias=bias)
+        self.conv4   = conv(self.batchNorm, C31_OUT, C4__OUT, bias=bias, stride=2)
+        self.conv4_1 = conv(self.batchNorm, C4__OUT, C41_OUT, bias=bias)
+        self.conv5   = conv(self.batchNorm, C41_OUT, C5__OUT, bias=bias, stride=2)
+        self.conv5_1 = conv(self.batchNorm, C5__OUT, C51_OUT, bias=bias)
+        self.conv6   = conv(self.batchNorm, C51_OUT, C6__OUT, bias=bias, stride=2)
+        self.conv6_1 = conv(self.batchNorm, C6__OUT, C61_OUT, bias=bias)
 
         self.deconv5 = deconv(C61_OUT,DC5_OUT)
         self.deconv4 = deconv(C51_OUT+DC5_OUT+2,DC4_OUT)
@@ -121,14 +121,14 @@ class FlowNetShalf(nn.Module):
         return [param for name, param in self.named_parameters() if 'bias' in name]
 
 
-def flownetshalf(data=None):
+def flownetshalf(data=None, args=None):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 
     Args:
         data : pretrained weights of the network. will create a new one if not set
     """
-    model = FlowNetShalf(batchNorm=False)
+    model = FlowNetShalf(batchNorm=False, bias=args.conv_no_bias, cut_ratio=args.cut_ratio)
     if data is not None:
         model.load_state_dict(data['state_dict'], strict=False)
     return model

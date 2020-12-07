@@ -14,7 +14,7 @@ __all__ = [
 class FlowNetS33_Q(nn.Module):
     expansion = 1
 
-    def __init__(self,batchNorm=True, bitW=32, bitA=32):
+    def __init__(self,batchNorm=True, bitW=32, bitA=32, bias=True):
         super(FlowNetS33_Q,self).__init__()
         
         self.bitW = bitW
@@ -23,20 +23,20 @@ class FlowNetS33_Q(nn.Module):
         print ('bitA = ' , bitA)
 
         self.batchNorm = batchNorm
-        self.conv1   = conv_Q(self.batchNorm,   6,   64, bitW=bitW, bitA=bitA) # 7x7 origin
-        self.conv1_1 = conv_Q(self.batchNorm,  64,   64, bitW=bitW, bitA=bitA)
-        self.conv1_2 = conv_Q(self.batchNorm,  64,   64, stride=2, bitW=bitW, bitA=bitA)
-        self.conv2   = conv_Q(self.batchNorm,  64,  128, bitW=bitW, bitA=bitA) # 5x5 origin
-        self.conv2_1 = conv_Q(self.batchNorm, 128,  128, stride=2, bitW=bitW, bitA=bitA)
-        self.conv3   = conv_Q(self.batchNorm, 128,  256, bitW=bitW, bitA=bitA) # 5x5 origin
-        self.conv3_0 = conv_Q(self.batchNorm, 256,  256, stride=2, bitW=bitW, bitA=bitA)
-        self.conv3_1 = conv_Q(self.batchNorm, 256,  256, bitW=bitW, bitA=bitA)
-        self.conv4   = conv_Q(self.batchNorm, 256,  512, stride=2, bitW=bitW, bitA=bitA)
-        self.conv4_1 = conv_Q(self.batchNorm, 512,  512, bitW=bitW, bitA=bitA)
-        self.conv5   = conv_Q(self.batchNorm, 512,  512, stride=2, bitW=bitW, bitA=bitA)
-        self.conv5_1 = conv_Q(self.batchNorm, 512,  512, bitW=bitW, bitA=bitA)
-        self.conv6   = conv_Q(self.batchNorm, 512, 1024, stride=2, bitW=bitW, bitA=bitA)
-        self.conv6_1 = conv_Q(self.batchNorm,1024, 1024, bitW=bitW, bitA=bitA)
+        self.conv1   = conv_Q(self.batchNorm,   6,   64, bias=bias, bitW=bitW, bitA=bitA) # 7x7 origin
+        self.conv1_1 = conv_Q(self.batchNorm,  64,   64, bias=bias, bitW=bitW, bitA=bitA)
+        self.conv1_2 = conv_Q(self.batchNorm,  64,   64, bias=bias, bitW=bitW, bitA=bitA, stride=2)
+        self.conv2   = conv_Q(self.batchNorm,  64,  128, bias=bias, bitW=bitW, bitA=bitA) # 5x5 origin
+        self.conv2_1 = conv_Q(self.batchNorm, 128,  128, bias=bias, bitW=bitW, bitA=bitA, stride=2)
+        self.conv3   = conv_Q(self.batchNorm, 128,  256, bias=bias, bitW=bitW, bitA=bitA) # 5x5 origin
+        self.conv3_0 = conv_Q(self.batchNorm, 256,  256, bias=bias, bitW=bitW, bitA=bitA, stride=2)
+        self.conv3_1 = conv_Q(self.batchNorm, 256,  256, bias=bias, bitW=bitW, bitA=bitA)
+        self.conv4   = conv_Q(self.batchNorm, 256,  512, bias=bias, bitW=bitW, bitA=bitA, stride=2)
+        self.conv4_1 = conv_Q(self.batchNorm, 512,  512, bias=bias, bitW=bitW, bitA=bitA)
+        self.conv5   = conv_Q(self.batchNorm, 512,  512, bias=bias, bitW=bitW, bitA=bitA, stride=2)
+        self.conv5_1 = conv_Q(self.batchNorm, 512,  512, bias=bias, bitW=bitW, bitA=bitA)
+        self.conv6   = conv_Q(self.batchNorm, 512, 1024, bias=bias, bitW=bitW, bitA=bitA, stride=2)
+        self.conv6_1 = conv_Q(self.batchNorm,1024, 1024, bias=bias, bitW=bitW, bitA=bitA)
 
         self.deconv5 = deconv_Q(1024,512, bitW=bitW, bitA=bitA)
         self.deconv4 = deconv_Q(1026,256, bitW=bitW, bitA=bitA)
@@ -111,16 +111,18 @@ class FlowNetS33_Q(nn.Module):
         return
 
 
-def flownets33q(data=None, bitW=32, bitA=32):
+def flownets33q(data=None, args=None):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 
     Args:
         data : pretrained weights of the network. will create a new one if not set
     """
-    model = FlowNetS33_Q(batchNorm=False, bitW=bitW, bitA=bitA)
+    model = FlowNetS33_Q(batchNorm=False, bias=args.conv_no_bias, bitW=args.qw, bitA=args.qa)
     if data is not None:
         model.load_state_dict(data['state_dict'], strict=False)
+    if args.alphabit is not None:
+        model.assign_alphabit(args.alphabit)
     return model
 
 

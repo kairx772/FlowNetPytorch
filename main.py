@@ -97,7 +97,7 @@ parser.add_argument('--qw', default=None, type=int,
                     help='weight quantization')
 parser.add_argument('--qa', default=None, type=int,
                     help='activation quantization')
-parser.add_argument('--cut-ratio', default=None, type=int,
+parser.add_argument('--cut-ratio', default=2, type=int,
                     help='divide FlowNet channels number by a ratio')
 parser.add_argument('--alphabit', default=None, type=int,
                     help='alpha_bit for LLSQ quantization')
@@ -221,9 +221,6 @@ def main():
     #     model = models.__dict__[args.arch](data=network_data).cuda()
 
     model = models.__dict__[args.arch](data=network_data, args=args).to(device)
-    
-    if args.alphabit is not None:
-        model.assign_alphabit(args.alphabit)
 
     # model = torch.nn.DataParallel(model).cuda()
     # cudnn.benchmark = True

@@ -89,6 +89,7 @@ class ACT_Q(nn.Module):
             self.register_buffer('init_state', torch.zeros(1))        #self.init_state = 0
 
     def forward(self, input):
+        # print ('self.alpha_bit: ', self.alpha_bit)
         if self.training and self.init_state == 0:
             self.alpha.data.copy_(input.detach().abs().max() / (self.pwr_coef + 1))
             self.init_state.fill_(1)
@@ -330,7 +331,7 @@ def conv(batchNorm, in_planes, out_planes, kernel_size=3, stride=1):
             nn.ReLU()
         )
 
-def conv_Q(batchNorm, in_planes, out_planes, kernel_size=3, stride=1, bitW=32, bitA=32):
+def conv_Q(batchNorm, in_planes, out_planes, kernel_size=3, stride=1, bitW=32, bitA=32, bias=True):
     if batchNorm:
         return nn.Sequential(
             QuantConv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=(kernel_size-1)//2, bias=False, bit = bitW),
@@ -340,7 +341,7 @@ def conv_Q(batchNorm, in_planes, out_planes, kernel_size=3, stride=1, bitW=32, b
         )
     else:
         return nn.Sequential(
-            QuantConv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=(kernel_size-1)//2, bias=True, bit = bitW),
+            QuantConv2d(in_planes, out_planes, kernel_size=kernel_size, stride=stride, padding=(kernel_size-1)//2, bias=bias, bit = bitW),
             nn.ReLU(),
             ACT_Q(bit=bitA)
         )

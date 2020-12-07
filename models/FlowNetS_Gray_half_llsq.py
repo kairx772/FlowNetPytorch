@@ -14,7 +14,7 @@ __all__ = [
 class FlowNetSGrayHalfLLSQ(nn.Module):
     expansion = 1
 
-    def __init__(self,batchNorm=True, bitW=32, bitA=32, cut_ratio=2):
+    def __init__(self,batchNorm=True, bias=True, bitW=32, bitA=32, cut_ratio=2):
         super(FlowNetSGrayHalfLLSQ,self).__init__()
 
         ratio = cut_ratio
@@ -39,20 +39,20 @@ class FlowNetSGrayHalfLLSQ(nn.Module):
         DC2_OUT = 64//ratio
 
         self.batchNorm = batchNorm
-        self.conv1   = conv_Q(self.batchNorm,   2,   C01_OUT, bitW=bitW, bitA=bitA) # 7x7 origin
-        self.conv1_1 = conv_Q(self.batchNorm,  C01_OUT,   C11_OUT, bitW=bitW, bitA=bitA)
-        self.conv1_2 = conv_Q(self.batchNorm,  C11_OUT,   C12_OUT, stride=2, bitW=bitW, bitA=bitA)
-        self.conv2   = conv_Q(self.batchNorm,  C12_OUT,  C2__OUT, bitW=bitW, bitA=bitA) # 5x5 origin
-        self.conv2_1 = conv_Q(self.batchNorm, C2__OUT,  C21_OUT, stride=2, bitW=bitW, bitA=bitA)
-        self.conv3   = conv_Q(self.batchNorm, C21_OUT,  C3__OUT, bitW=bitW, bitA=bitA) # 5x5 origin
-        self.conv3_0 = conv_Q(self.batchNorm, C3__OUT,  C30_OUT, stride=2, bitW=bitW, bitA=bitA)
-        self.conv3_1 = conv_Q(self.batchNorm, C30_OUT,  C31_OUT, bitW=bitW, bitA=bitA)
-        self.conv4   = conv_Q(self.batchNorm, C31_OUT,  C4__OUT, stride=2, bitW=bitW, bitA=bitA)
-        self.conv4_1 = conv_Q(self.batchNorm, C4__OUT,  C41_OUT, bitW=bitW, bitA=bitA)
-        self.conv5   = conv_Q(self.batchNorm, C41_OUT,  C5__OUT, stride=2, bitW=bitW, bitA=bitA)
-        self.conv5_1 = conv_Q(self.batchNorm, C5__OUT,  C51_OUT, bitW=bitW, bitA=bitA)
-        self.conv6   = conv_Q(self.batchNorm, C51_OUT, C6__OUT, stride=2, bitW=bitW, bitA=bitA)
-        self.conv6_1 = conv_Q(self.batchNorm,C6__OUT, C61_OUT, bitW=bitW, bitA=bitA)
+        self.conv1   = conv_Q(self.batchNorm,       2, C01_OUT, bias=bias, bitW=bitW, bitA=bitA) # 7x7 origin
+        self.conv1_1 = conv_Q(self.batchNorm, C01_OUT, C11_OUT, bias=bias, bitW=bitW, bitA=bitA)
+        self.conv1_2 = conv_Q(self.batchNorm, C11_OUT, C12_OUT, bias=bias, bitW=bitW, bitA=bitA, stride=2)
+        self.conv2   = conv_Q(self.batchNorm, C12_OUT, C2__OUT, bias=bias, bitW=bitW, bitA=bitA) # 5x5 origin
+        self.conv2_1 = conv_Q(self.batchNorm, C2__OUT, C21_OUT, bias=bias, bitW=bitW, bitA=bitA, stride=2)
+        self.conv3   = conv_Q(self.batchNorm, C21_OUT, C3__OUT, bias=bias, bitW=bitW, bitA=bitA) # 5x5 origin
+        self.conv3_0 = conv_Q(self.batchNorm, C3__OUT, C30_OUT, bias=bias, bitW=bitW, bitA=bitA, stride=2)
+        self.conv3_1 = conv_Q(self.batchNorm, C30_OUT, C31_OUT, bias=bias, bitW=bitW, bitA=bitA)
+        self.conv4   = conv_Q(self.batchNorm, C31_OUT, C4__OUT, bias=bias, bitW=bitW, bitA=bitA, stride=2)
+        self.conv4_1 = conv_Q(self.batchNorm, C4__OUT, C41_OUT, bias=bias, bitW=bitW, bitA=bitA)
+        self.conv5   = conv_Q(self.batchNorm, C41_OUT, C5__OUT, bias=bias, bitW=bitW, bitA=bitA, stride=2)
+        self.conv5_1 = conv_Q(self.batchNorm, C5__OUT, C51_OUT, bias=bias, bitW=bitW, bitA=bitA)
+        self.conv6   = conv_Q(self.batchNorm, C51_OUT, C6__OUT, bias=bias, bitW=bitW, bitA=bitA, stride=2)
+        self.conv6_1 = conv_Q(self.batchNorm, C6__OUT, C61_OUT, bias=bias, bitW=bitW, bitA=bitA)
 
         self.deconv5 = deconv_Q(C61_OUT,DC5_OUT, bitW=bitW, bitA=bitA)
         self.deconv4 = deconv_Q(C51_OUT+DC5_OUT+2,DC4_OUT, bitW=bitW, bitA=bitA)
@@ -128,22 +128,25 @@ class FlowNetSGrayHalfLLSQ(nn.Module):
 
     def bias_parameters(self):
         return [param for name, param in self.named_parameters() if 'bias' in name]
+
     def assign_alphabit(self, alphabit):
         for m in self.modules():
             if isinstance(m, ACT_Q):
                 m.alpha_bit = alphabit
         return
 
-def fnsghllsq(data=None, bitW=32, bitA=32, cut_ratio=2):
+def fnsghllsq(data=None, args=None):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 
     Args:
         data : pretrained weights of the network. will create a new one if not set
     """
-    model = FlowNetSGrayHalfLLSQ(batchNorm=False, bitW=bitW, bitA=bitA, cut_ratio=cut_ratio)
+    model = FlowNetSGrayHalfLLSQ(batchNorm=False, bias=args.conv_no_bias, bitW=args.qw, bitA=args.qa, cut_ratio=args.cut_ratio)
     if data is not None:
         model.load_state_dict(data['state_dict'], strict=False)
+    if args.alphabit is not None:
+        model.assign_alphabit(args.alphabit)
     return model
 
 
