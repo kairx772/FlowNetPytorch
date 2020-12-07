@@ -5,6 +5,7 @@ import torch
 import torch.nn.functional as F
 import sys
 from torchsummary import summary
+import datetime
 
 
 def save_checkpoint(state, is_best, save_path, filename='checkpoint.pth.tar'):
@@ -77,6 +78,8 @@ def save_training_args(save_path, args):
         f.write('\n')
     f.write('\n')
     f.write('\n{}'.format(' '.join(sys.argv)))
+    f.write('\n')
+    f.write('{}'.format(datetime.datetime.now().strftime("%m-%d-%H:%M")))
     f.close()
 
 def exportpars(model, save_path, args):
