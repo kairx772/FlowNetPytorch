@@ -102,7 +102,7 @@ parser.add_argument('--cut-ratio', default=None, type=int,
 parser.add_argument('--alphabit', default=None, type=int,
                     help='alpha_bit for LLSQ quantization')
 parser.add_argument('--conv-no-bias', action='store_false',
-                    help='print model parameters' )
+                    help='convolution layer have no bias parameters' )
 parser.add_argument('--milestones', type=int, default=[100,150,200], metavar='N', nargs='+', help='epochs at which learning rate is divided by 2')
 
 best_EPE = -1
@@ -115,7 +115,7 @@ def main():
     args = parser.parse_args()
     
     if not args.data:
-        f = open('data_loc.json', 'r')
+        f = open('train_src/data_loc.json', 'r')
         content = f.read()
         f.close()
         data_loc = json.loads(content)
