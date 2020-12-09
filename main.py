@@ -179,11 +179,11 @@ def main():
         ])
     else:
         co_transform = flow_transforms.Compose([
-            #flow_transforms.RandomTranslate(10),
-            #flow_transforms.RandomRotate(10,5),
-            # flow_transforms.RandomCrop((320,448)),
-            #flow_transforms.RandomVerticalFlip(),
-            #flow_transforms.RandomHorizontalFlip()
+            flow_transforms.RandomTranslate(10),
+            flow_transforms.RandomRotate(10,5),
+            flow_transforms.RandomCrop((320,448)),
+            flow_transforms.RandomVerticalFlip(),
+            flow_transforms.RandomHorizontalFlip()
         ])
 
     print("=> fetching img pairs in '{}'".format(args.data))
@@ -197,9 +197,11 @@ def main():
     print('{} samp-les found, {} train samples and {} test samples '.format(len(test_set)+len(train_set),
                                                                            len(train_set),
                                                                            len(test_set)))
-    train_loader = torch.utils.data.DataLoader(
-        train_set, batch_size=args.batch_size,
-        num_workers=args.workers, pin_memory=True, shuffle=True)
+    if not args.evaluate:
+        print ('asdfasdfaaaaa')
+        train_loader = torch.utils.data.DataLoader(
+            train_set, batch_size=args.batch_size,
+            num_workers=args.workers, pin_memory=True, shuffle=True)
     val_loader = torch.utils.data.DataLoader(
         test_set, batch_size=args.batch_size,
         num_workers=args.workers, pin_memory=True, shuffle=False)
