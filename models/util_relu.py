@@ -19,9 +19,9 @@ def predict_flow(in_planes):
     return nn.Conv2d(in_planes,2,kernel_size=3,stride=1,padding=1,bias=False)
 
 
-def deconv(in_planes, out_planes):
+def deconv(in_planes, out_planes, kernel_size=4):
     return nn.Sequential(
-        nn.ConvTranspose2d(in_planes, out_planes, kernel_size=4, stride=2, padding=1, bias=False),
+        nn.ConvTranspose2d(in_planes, out_planes, kernel_size=kernel_size, stride=2, padding=1, bias=False),
         nn.ReLU()
     )
 

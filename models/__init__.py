@@ -4,6 +4,7 @@ from .PWCNet import *
 from .FlowNetDorefa import *
 from .FlowNetReLu import *
 from .FlowNetS_3x3 import *
+from .FlowNetS_33up import *
 from .FlowNetS_3x3_Q import *
 from .FlowNetS_3x3_Q_dorefa import *
 from .FlowNetS_Gray import *

@@ -198,10 +198,10 @@ def main():
                                                                            len(train_set),
                                                                            len(test_set)))
     if not args.evaluate:
-        print ('asdfasdfaaaaa')
         train_loader = torch.utils.data.DataLoader(
             train_set, batch_size=args.batch_size,
             num_workers=args.workers, pin_memory=True, shuffle=True)
+    
     val_loader = torch.utils.data.DataLoader(
         test_set, batch_size=args.batch_size,
         num_workers=args.workers, pin_memory=True, shuffle=False)
