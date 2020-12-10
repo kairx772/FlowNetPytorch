@@ -112,7 +112,7 @@ def flownets33up(data=None, args=None):
     return model
 
 
-def flownets33_bn(data=None):
+def flownets33up_bn(data=None):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 
