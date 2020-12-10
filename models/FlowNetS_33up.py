@@ -6,7 +6,7 @@ from .util_relu import conv, predict_flow, deconv, crop_like
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 __all__ = [
-    'flownets33', 'flownets33_bn'
+    'flownets33up', 'flownets33up_bn'
 ]
 
 
@@ -98,7 +98,7 @@ class FlowNetS(nn.Module):
     def bias_parameters(self):
         return [param for name, param in self.named_parameters() if 'bias' in name]
 
-def flownets33(data=None, args=None):
+def flownets33up(data=None, args=None):
     """FlowNetS model architecture from the
     "Learning Optical Flow with Convolutional Networks" paper (https://arxiv.org/abs/1504.06852)
 
