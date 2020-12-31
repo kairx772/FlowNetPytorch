@@ -18,6 +18,8 @@ import datetime
 from torch.utils.tensorboard import SummaryWriter
 from util import flow2rgb, AverageMeter, save_checkpoint, save_training_args, exportpars, exportsummary
 import numpy as np
+import cv2
+import flow_viz
 
 # import warnings
 # warnings.filterwarnings("ignore")
@@ -83,6 +85,10 @@ parser.add_argument('--print-freq', '-p', default=10, type=int,
                     metavar='N', help='print frequency')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
+parser.add_argument('-demo', '--demo', dest='demo', action='store_true',
+                    help='demo model on webcam')
+parser.add_argument('-demovideo', '--demovideo', dest='demovideo', action='store_true',
+                    help='demo model for video')
 parser.add_argument('--pretrained', dest='pretrained', default=None,
                     help='path to pre-trained model')
 parser.add_argument('--no-date', action='store_true',
@@ -256,6 +262,13 @@ def main():
         best_EPE = validate(val_loader, model, 0, output_writers)
         return
 
+    if args.demo:
+        demo(val_loader, model, 0, output_writers)
+        return
+    if args.demovideo:
+        demovideo(val_loader, model, 0, output_writers)
+        return
+
     scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=args.milestones, gamma=args.gamma)
 
     for epoch in range(args.start_epoch, args.epochs):
@@ -357,7 +370,9 @@ def validate(val_loader, model, epoch, output_writers):
     # switch to evaluate mode
     model.eval()
 
-    # end = time.time(); runtime_count = -1; sum_runtime = 0;
+    # end = time.time(); 
+    runtime_count = 0; 
+    sum_runtime = 0;
     end = time.time()
     for i, (input, target) in enumerate(val_loader):
         target = target.to(device)
@@ -365,16 +380,19 @@ def validate(val_loader, model, epoch, output_writers):
         input = torch.cat(input,1).to(device)
         
         # compute output
-        # start_time = time.time(); runtime_count += 1;
+        start_time = time.time()
         if args.graymodel:
             output = model(torch.cat([input[:,0:1,:,:], input[:,3:4,:,:]],1))
         else:
             output = model(input)
-        # runtime = (time.time()-start_time); sum_runtime += runtime
+        runtime = (time.time()-start_time)
+        #sum_runtime += runtime
         # if runtime_count == 0: 
         #     sum_runtime = 0 
         # else: print ('AvgRunTime: ', sum_runtime/runtime_count)
-        # print ('RunTime:    ', runtime)
+        runtime_count += 1
+        sum_runtime += runtime
+        # print (runtime)
         flow2_EPE = args.div_flow*realEPE(output, target, sparse=args.sparse)
         # record EPE
         flow2_EPEs.update(flow2_EPE.item(), target.size(0))
@@ -396,9 +414,69 @@ def validate(val_loader, model, epoch, output_writers):
                   .format(i, len(val_loader), batch_time, flow2_EPEs))
 
     print(' * EPE {:.3f}'.format(flow2_EPEs.avg))
+    print ('sum_runtime', sum_runtime/runtime_count, runtime_count)
 
     return flow2_EPEs.avg
 
+def demo(val_loader, model, epoch, output_writers):
+    global args
+
+    # switch to evaluate mode
+    model.eval()
+
+    cap = cv2.VideoCapture(0)
+    ret, image1 = cap.read()
+    if args.graymodel:
+        image1 = cv2.cvtColor(image1, cv2.COLOR_BGR2GRAY)
+    loader = transforms.Compose([transforms.ToTensor()])
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    out = cv2.VideoWriter('output.avi',fourcc, 20.0, (640,480))
+    while(True):
+        # Capture frame-by-frame
+        ret, image2 = cap.read()
+        if args.graymodel:
+            image2 = cv2.cvtColor(image2, cv2.COLOR_BGR2GRAY)
+        image1cu = loader(image1).unsqueeze(0).to(device, torch.float)
+        image2cu = loader(image2).unsqueeze(0).to(device, torch.float)
+
+        output = args.div_flow * model(torch.cat([image1cu, image2cu],1))
+        output = F.interpolate(output, size=image1cu.size()[-2:], mode='bilinear', align_corners=False)
+        # flow_low, flow_pr = model(image1cu, image2cu, iters=iters, test_mode=True)
+        # flow = padder.unpad(flow_pr[0]).cpu()
+        
+        flo = output[0].permute(1,2,0).cpu().detach().numpy()
+
+
+
+        flo = flow_viz.flow_to_image(flo)
+        flow = flo/255.0
+
+        cv2.imshow('frame', image2)
+        cv2.imshow('OF', flo)
+        # print (image2.shape, flo.shape)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+        image1 = image2
+
+    return
+
+def demovideo(val_loader, model, epoch, output_writers):
+    model.eval()
+    cap = cv2.VideoCapture('train_src/video/2011_09_30_drive_0027_sync_Image.mkv')
+    ret, image1 = cap.read()
+    loader = transforms.Compose([transforms.ToTensor()])
+    fnum = 0
+    while(True):
+        ret, image2 = cap.read()
+        image1cu = loader(image1).unsqueeze(0).to(device, torch.float)
+        image2cu = loader(image2).unsqueeze(0).to(device, torch.float)
+        output = args.div_flow * model(torch.cat([image1cu, image2cu],1))
+        output = F.interpolate(output, size=image1cu.size()[-2:], mode='bilinear', align_corners=False)
+        fnum += 1
+        print (fnum)
+        flo = output[0].permute(1,2,0).cpu().detach().numpy()
+        np.save('train_src/video/2011_09_30_drive_0027_sync_Image/flownets_w5a5/{}'.format(fnum), flo)
+    cap.release()
 
 if __name__ == '__main__':
     main()

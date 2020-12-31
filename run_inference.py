@@ -119,6 +119,5 @@ def main():
                 to_save = (args.div_flow*flow_output).cpu().numpy().transpose(1,2,0)
                 np.save(filename + '.npy', to_save)
 
-
 if __name__ == '__main__':
     main()

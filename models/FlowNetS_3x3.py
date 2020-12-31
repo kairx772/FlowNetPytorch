@@ -105,7 +105,6 @@ def flownets33(data=None, args=None):
     Args:
         data : pretrained weights of the network. will create a new one if not set
     """
-    print ('args.bias:', args.conv_no_bias)
     model = FlowNetS(batchNorm=False, bias=args.conv_no_bias)
     if data is not None:
         model.load_state_dict(data['state_dict'], strict=False)
