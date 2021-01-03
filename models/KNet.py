@@ -62,10 +62,10 @@ class KNet(nn.Module):
         EC33_OUT = ecchnum3
         EC34_OUT = ecchnum4
         EC35_OUT = ecchnum5
-        EC36_OUT = ecchnum5
-        EC37_OUT = ecchnum5
-        EC38_OUT = ecchnum5
-        EC39_OUT = ecchnum5
+        EC36_OUT = ecchnum6
+        EC37_OUT = ecchnum7
+        EC38_OUT = ecchnum8
+        EC39_OUT = ecchnum9
 
         EC41_OUT = ecchnum1
         EC42_OUT = ecchnum2

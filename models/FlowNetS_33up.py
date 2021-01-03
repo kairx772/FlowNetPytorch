@@ -32,10 +32,10 @@ class FlowNetS(nn.Module):
         self.conv6   = conv(self.batchNorm, 512, 1024, bias=bias, stride=2)
         self.conv6_1 = conv(self.batchNorm,1024, 1024, bias=bias)
 
-        self.deconv5 = deconv(1024,512, kernel_size=4)
-        self.deconv4 = deconv(1026,256, kernel_size=4)
-        self.deconv3 = deconv(770,128, kernel_size=4)
-        self.deconv2 = deconv(386,64, kernel_size=4)
+        self.deconv5 = deconv(1024,512, kernel_size=3)
+        self.deconv4 = deconv(1026,256, kernel_size=3)
+        self.deconv3 = deconv(770,128, kernel_size=3)
+        self.deconv2 = deconv(386,64, kernel_size=3)
 
         self.predict_flow6 = predict_flow(1024)
         self.predict_flow5 = predict_flow(1026)
@@ -67,8 +67,12 @@ class FlowNetS(nn.Module):
 
         flow6       = self.predict_flow6(out_conv6)
         flow6_up    = crop_like(self.upsampled_flow6_to_5(flow6), out_conv5)
+        print ('out_deconv5:', out_conv5.shape)
+        print ('self.deconv5:', self.deconv5(out_conv6).shape)
         out_deconv5 = crop_like(self.deconv5(out_conv6), out_conv5)
 
+        print ('out_conv5:', out_conv5.shape)
+        print ('out_deconv5:', out_deconv5.shape)
         concat5 = torch.cat((out_conv5,out_deconv5,flow6_up),1)
         flow5       = self.predict_flow5(concat5)
         flow5_up    = crop_like(self.upsampled_flow5_to_4(flow5), out_conv4)
