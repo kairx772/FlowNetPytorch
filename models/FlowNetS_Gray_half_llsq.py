@@ -66,10 +66,10 @@ class FlowNetSGrayHalfLLSQ(nn.Module):
         self.predict_flow2 = predict_flow_Q(C21_OUT+DC2_OUT+2, bitW=bitW)
 
         k_up = 4
-        self.upsampled_flow6_to_5 = ConvTrans2d_Q(2, 2, k_up, 2, 1, bias=False)
-        self.upsampled_flow5_to_4 = ConvTrans2d_Q(2, 2, k_up, 2, 1, bias=False)
-        self.upsampled_flow4_to_3 = ConvTrans2d_Q(2, 2, k_up, 2, 1, bias=False)
-        self.upsampled_flow3_to_2 = ConvTrans2d_Q(2, 2, k_up, 2, 1, bias=False)
+        self.upsampled_flow6_to_5 = ConvTrans2d_Q(2, 2, k_up, 2, 1, bias=False, bitW=bitW)
+        self.upsampled_flow5_to_4 = ConvTrans2d_Q(2, 2, k_up, 2, 1, bias=False, bitW=bitW)
+        self.upsampled_flow4_to_3 = ConvTrans2d_Q(2, 2, k_up, 2, 1, bias=False, bitW=bitW)
+        self.upsampled_flow3_to_2 = ConvTrans2d_Q(2, 2, k_up, 2, 1, bias=False, bitW=bitW)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
