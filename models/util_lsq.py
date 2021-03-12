@@ -282,7 +282,9 @@ class QuantConvTranspose2d(nn.ConvTranspose2d):
                 input=x, weight=self.weight, bias=self.bias, stride=self.stride, padding=self.padding,
                 dilation=self.dilation, groups=self.groups)
         else:
-            w_reshape = self.weight.reshape([self.weight.shape[1], -1]).transpose(0, 1)
+            w_reshape_T = self.weight.transpose(0, 1)
+            w_reshape = w_reshape_T.reshape([w_reshape_T.shape[0], -1]).transpose(0, 1)
+
             if self.training and self.init_state == 0:            
                 self.alpha_w.data.copy_(w_reshape.detach().abs().max(dim=0)[0] / self.pwr_coef)
                 self.init_state.fill_(1)
@@ -295,7 +297,7 @@ class QuantConvTranspose2d(nn.ConvTranspose2d):
             #    assert not torch.isinf(wq).any(), self.alpha_w
 
             wq =  self.Round_w(w_reshape, alpha_w, self.pwr_coef, self.bit)
-            w_q = wq.transpose(0, 1).reshape(self.weight.shape)
+            w_q = wq.transpose(0, 1).reshape(w_reshape_T.shape).transpose(0, 1)
 
             if self.bias_flag == True:
                 LLSQ_b  = self.Round_b(self.bias, alpha_w, self.pwr_coef, self.bit)
